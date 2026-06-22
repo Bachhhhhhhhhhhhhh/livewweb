@@ -1,11 +1,9 @@
 {
-  "fetchedAt": "2026-06-22T15:05:56.203Z",
+  "fetchedAt": "2026-06-22T18:44:38.114Z",
   "upstream": "https://api.worldmonitor.app",
   "fast": {
-    "keys": 25,
-    "missing": [
-      "serviceStatuses"
-    ]
+    "keys": 26,
+    "missing": []
   },
   "slow": {
     "keys": 80,
