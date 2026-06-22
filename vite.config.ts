@@ -787,10 +787,12 @@ export default defineConfig(({ mode }) => {
 
   const isE2E = process.env.VITE_E2E === '1';
   const isDesktopBuild = process.env.VITE_DESKTOP_RUNTIME === '1';
+  const isGitHubPages = process.env.GITHUB_PAGES === '1';
   const activeVariant = process.env.VITE_VARIANT || 'full';
   const activeMeta = VARIANT_META[activeVariant] || VARIANT_META.full;
 
   return {
+    base: isGitHubPages ? '/livewweb/' : '/',
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
       // Resolved + build-time validated above (devDependencies fallback +
