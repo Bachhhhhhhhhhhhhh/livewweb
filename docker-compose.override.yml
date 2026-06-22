@@ -1,0 +1,11 @@
+services:
+  worldmonitor:
+    environment:
+      OLLAMA_API_URL: "http://host.docker.internal:11434"
+      OLLAMA_MODEL: "llama3.1:8b"
+      LLM_REASONING_PROVIDER: "ollama"
+      LLM_TOOL_PROVIDER: "ollama"
+
+  ais-relay:
+    environment:
+      AISSTREAM_API_KEY: ""

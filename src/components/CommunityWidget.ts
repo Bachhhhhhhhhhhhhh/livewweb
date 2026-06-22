@@ -4,7 +4,7 @@ import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 
 
 const DISMISSED_KEY = 'wm-community-dismissed-v2';
-const DISCUSSION_URL = 'https://discord.gg/re63kWKxaz';
+const DISCUSSION_URL = 'https://www.linkedin.com/in/bachtruong123/';
 
 export function mountCommunityWidget(): void {
   if (getDismissed(DISMISSED_KEY)) return;
@@ -14,7 +14,7 @@ export function mountCommunityWidget(): void {
   widget.className = 'community-widget';
   setTrustedHtml(widget, trustedHtml(`
     <div class="cw-pill">
-      <a class="cw-cta" href="${DISCUSSION_URL}" target="_blank" rel="noopener">Join the Discord Community</a>
+      <a class="cw-cta" href="${DISCUSSION_URL}" target="_blank" rel="noopener">Connect on LinkedIn</a>
       <button class="cw-close" aria-label="${t('common.close')}">&times;</button>
     </div>
   `, "legacy direct innerHTML migration"));

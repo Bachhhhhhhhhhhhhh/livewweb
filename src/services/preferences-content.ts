@@ -228,9 +228,9 @@ export function renderPreferences(host: PreferencesHost): PreferencesResult {
     html += `<div class="ai-flow-toggle-warn" style="display:${settings.browserModel ? 'block' : 'none'}">${t('components.insights.aiFlowBrowserWarn')}</div>`;
     html += `
       <div class="ai-flow-cta">
-        <div class="ai-flow-cta-title">${t('components.insights.aiFlowOllamaCta')}</div>
-        <div class="ai-flow-cta-desc">${t('components.insights.aiFlowOllamaCtaDesc')}</div>
-        <a href="${DESKTOP_RELEASES_URL}" target="_blank" rel="noopener noreferrer" class="ai-flow-cta-link">${t('components.insights.aiFlowDownloadDesktop')}</a>
+        <div class="ai-flow-cta-title">Brian Bach Truong</div>
+        <div class="ai-flow-cta-desc">Data Analyst, Honda</div>
+        <a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener noreferrer" class="ai-flow-cta-link">LinkedIn</a>
       </div>
     `;
   }
@@ -390,9 +390,9 @@ export function renderPreferences(host: PreferencesHost): PreferencesResult {
     </div>
     <div class="us-data-mgmt-toast" id="usDataMgmtToast"></div>
   `;
-  html += `<a href="https://discord.gg/re63kWKxaz" target="_blank" rel="noopener noreferrer" class="us-discussion-link">
+  html += `<a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener noreferrer" class="us-discussion-link">
     <span class="us-discussion-dot"></span>
-    <span>${t('components.community.joinDiscussion')}</span>
+    <span>LinkedIn — Brian Bach Truong</span>
   </a>`;
   html += `</div></details>`;
 
