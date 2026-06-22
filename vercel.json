@@ -1,10 +1,14 @@
 {
   "env": {
-    "UNLOCK_ALL": "1"
+    "UNLOCK_ALL": "1",
+    "PROXY_TO_UPSTREAM_API": "1",
+    "UPSTREAM_API_URL": "https://api.worldmonitor.app",
+    "UPSTREAM_ORIGIN_HEADER": "https://worldmonitor.app"
   },
   "build": {
     "env": {
-      "UNLOCK_ALL": "1"
+      "UNLOCK_ALL": "1",
+      "PROXY_TO_UPSTREAM_API": "1"
     }
   },
   "ignoreCommand": "bash scripts/vercel-ignore.sh",

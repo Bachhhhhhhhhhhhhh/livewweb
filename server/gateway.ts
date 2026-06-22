@@ -53,6 +53,8 @@ import {
 } from './_shared/usage';
 import { timingSafeEqual } from './_shared/internal-auth';
 import type { ServerOptions } from '../src/generated/server/worldmonitor/seismology/v1/service_server';
+// @ts-expect-error — JS module, no declaration file
+import { shouldUseUpstreamProxy, proxyToUpstream } from '../api/_upstream-proxy.js';
 
 export const serverOptions: ServerOptions = { onError: mapErrorToResponse };
 
@@ -571,6 +573,22 @@ export function createDomainGateway(
     if (request.method === 'OPTIONS') {
       emitRequest(204, 'preflight', null);
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // Live data bridge: proxy non-premium RPCs to production API (Redis-seeded).
+    if (
+      shouldUseUpstreamProxy()
+      && pathname !== '/api/wm-session'
+      && !PREMIUM_RPC_PATHS.has(pathname)
+    ) {
+      try {
+        const proxied = await proxyToUpstream(request, pathname, corsHeaders);
+        emitRequest(proxied.status, proxied.ok ? 'ok' : 'unknown_route', null);
+        return proxied;
+      } catch (err) {
+        captureSilentError(err, { tags: { route: 'gateway', step: 'upstream_proxy' } });
+        // Fall through to local handler on proxy failure.
+      }
     }
 
     // ----------------------------------------------------------------------

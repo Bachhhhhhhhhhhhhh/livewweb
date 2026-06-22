@@ -6,6 +6,8 @@ public/blog/
 *.log
 .env
 .env.local
+cookies.txt
+scripts/cloudflared.exe
 .playwright-mcp/
 *-network.txt
 .vercel

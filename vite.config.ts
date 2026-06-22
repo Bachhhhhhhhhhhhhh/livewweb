@@ -6,6 +6,7 @@ import { brotliCompress } from 'zlib';
 import { promisify } from 'util';
 import pkg from './package.json';
 import { VARIANT_META, type VariantMeta } from './src/config/variant-meta';
+import { PREMIUM_RPC_PATHS } from './src/shared/premium-paths';
 
 // Env-dependent constants moved inside defineConfig function
 
@@ -518,6 +519,35 @@ function sebufApiPlugin(): Plugin {
             return;
           }
 
+          const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') : url.pathname;
+
+          if (
+            process.env.PROXY_TO_UPSTREAM_API === '1'
+            && pathname !== '/api/wm-session'
+            && !PREMIUM_RPC_PATHS.has(pathname)
+          ) {
+            try {
+              const { proxyToUpstream } = await import('./api/_upstream-proxy.js');
+              const response = await proxyToUpstream(webRequest, pathname, corsHeaders);
+              res.statusCode = response.status;
+              response.headers.forEach((value, key) => {
+                res.setHeader(key, value);
+              });
+              if (response.body) {
+                const reader = response.body.getReader();
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  res.write(Buffer.from(value));
+                }
+              }
+              res.end();
+              return;
+            } catch (err) {
+              console.warn('[sebuf-api] upstream proxy failed, falling back to local:', err);
+            }
+          }
+
           // Route matching
           const matchedHandler = router.match(webRequest);
           if (!matchedHandler) {
@@ -551,6 +581,81 @@ function sebufApiPlugin(): Plugin {
           res.end(await response.text());
         } catch (err) {
           console.error('[sebuf-api] Error:', err);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Internal server error' }));
+        }
+      });
+    },
+  };
+}
+
+/** Dev-server handlers for standalone /api/*.js edge routes (bootstrap, wm-session, …). */
+function standaloneApiPlugin(): Plugin {
+  const SEBUF_RE = /^\/api\/(?:[a-z][a-z0-9-]*\/v\d+|v\d+\/[a-z][a-z0-9-]*)\//;
+  const ROUTES: Record<string, () => Promise<{ default: (req: Request) => Promise<Response> }>> = {
+    '/api/bootstrap': () => import('./api/bootstrap.js'),
+    '/api/health': () => import('./api/health.js'),
+    '/api/wm-session': () => import('./api/wm-session.js'),
+    '/api/version': () => import('./api/version.js'),
+    '/api/chat-analyst': () => import('./api/chat-analyst.ts'),
+  };
+
+  return {
+    name: 'standalone-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/')) return next();
+        if (SEBUF_RE.test(req.url)) return next();
+
+        const pathOnly = (req.url.split('?')[0] ?? '').replace(/\/+$/, '') || '/';
+        const loader = ROUTES[pathOnly];
+        if (!loader) return next();
+
+        try {
+          const port = server.config.server.port || 3000;
+          const url = new URL(req.url, `http://localhost:${port}`);
+
+          let body: string | undefined;
+          if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) {
+              chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+            }
+            body = Buffer.concat(chunks).toString();
+          }
+
+          const headers: Record<string, string> = {};
+          for (const [key, value] of Object.entries(req.headers)) {
+            if (typeof value === 'string') headers[key] = value;
+            else if (Array.isArray(value)) headers[key] = value.join(', ');
+          }
+
+          const webRequest = new Request(url.toString(), {
+            method: req.method,
+            headers,
+            body: body || undefined,
+          });
+
+          const mod = await loader();
+          const response = await mod.default(webRequest);
+
+          res.statusCode = response.status;
+          response.headers.forEach((value, key) => {
+            res.setHeader(key, value);
+          });
+
+          if (response.body) {
+            const reader = response.body.getReader();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              res.write(Buffer.from(value));
+            }
+          }
+          res.end();
+        } catch (err) {
+          console.error('[standalone-api] Error:', err);
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ error: 'Internal server error' }));
@@ -827,6 +932,7 @@ export default defineConfig(({ mode }) => {
       rssProxyPlugin(),
       youtubeLivePlugin(),
       gpsjamDevPlugin(),
+      standaloneApiPlugin(),
       sebufApiPlugin(),
       brotliPrecompressPlugin(),
       !isGitHubPages && VitePWA({

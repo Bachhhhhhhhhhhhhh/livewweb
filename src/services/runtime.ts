@@ -518,12 +518,10 @@ export function installWebApiRedirect(): void {
 
   const nativeFetch = window.fetch.bind(window);
   const shouldRedirectPath = (pathWithQuery: string): boolean => pathWithQuery.startsWith('/api/');
-  const withCredentials = (init?: RequestInit): RequestInit => {
-    const credentials = isStaticWebMirror()
-      ? (init?.credentials ?? 'omit')
-      : (init?.credentials ?? 'include');
-    return { ...(init ?? {}), credentials };
-  };
+  const withCredentials = (init?: RequestInit): RequestInit => ({
+    ...(init ?? {}),
+    credentials: init?.credentials ?? 'include',
+  });
 
   /**
    * For premium API paths, inject auth when the user has premium access but no

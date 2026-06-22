@@ -1,6 +1,7 @@
 import { getCorsHeaders, isDisallowedOrigin } from './_cors.js';
 import { validateApiKey } from './_api-key.js';
 import { jsonResponse } from './_json-response.js';
+import { shouldUseUpstreamProxy, proxyToUpstream } from './_upstream-proxy.js';
 // @ts-expect-error — JS module, no declaration file
 import { redisPipeline } from './_upstash-json.js';
 import { unwrapEnvelope } from './_seed-envelope.js';
@@ -253,6 +254,11 @@ export default async function handler(req) {
   const cors = getCorsHeaders(req);
   if (req.method === 'OPTIONS')
     return new Response(null, { status: 204, headers: cors });
+
+  if (shouldUseUpstreamProxy()) {
+    const pathname = new URL(req.url).pathname;
+    return proxyToUpstream(req, pathname, cors);
+  }
 
   const apiKeyResult = isPublicWeatherBootstrapRequest(req)
     ? { valid: true, required: false }
