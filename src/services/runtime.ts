@@ -140,9 +140,9 @@ export function getConfiguredWebApiBaseUrl(): string {
     return '';
   }
 
-  // GitHub Pages mirror: route API calls to the fork's Vercel deployment.
+  // GitHub Pages mirror: use production API (Vercel fork optional via VITE_WS_API_URL).
   if (isStaticWebMirror()) {
-    return 'https://livewweb.vercel.app';
+    return DEFAULT_WEB_API_URL;
   }
 
   const hostname = window.location?.hostname ?? '';
