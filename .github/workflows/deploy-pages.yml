@@ -3,10 +3,12 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -19,11 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://bachhhhhhhhhhhhhh.github.io/livewweb/
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/configure-pages@v5
 
       - uses: actions/setup-node@v4
         with:
@@ -64,8 +64,6 @@ jobs:
           test -f dist/dashboard.html
           test -f dist/live-seed/bootstrap-fast.json
           test -f dist/live-seed/bootstrap-slow.json
-          echo "dist size: $(du -sh dist | cut -f1)"
-          ls -la dist/live-seed/
           node <<'NODE'
           import { readFileSync, existsSync } from 'node:fs';
           import { join } from 'node:path';
@@ -91,9 +89,35 @@ jobs:
           console.log('Asset integrity check passed');
           NODE
 
+      - name: Publish built site to docs/
+        run: |
+          rm -rf docs
+          cp -r dist docs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          git diff --staged --quiet && echo "docs unchanged" && exit 0
+          git commit -m "deploy: GitHub Pages static build [skip ci]"
+          git push
+
+      - name: Point GitHub Pages at main/docs
+        run: |
+          code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
+            -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/pages" \
+            -d '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}')
+          echo "Pages configure HTTP $code"
+          cat /tmp/pages.json
+
+      - uses: actions/configure-pages@v5
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
       - uses: actions/deploy-pages@v4
         id: deployment
+        continue-on-error: true
