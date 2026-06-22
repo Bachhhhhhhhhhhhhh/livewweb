@@ -50,7 +50,7 @@
     "build:happy": "npm run build:openapi && npm run build:agent-skills && cross-env-shell VITE_VARIANT=happy \"tsc && vite build\"",
     "build:commodity": "npm run build:openapi && npm run build:agent-skills && cross-env-shell VITE_VARIANT=commodity \"tsc && vite build\"",
     "build:energy": "npm run build:openapi && npm run build:agent-skills && cross-env-shell VITE_VARIANT=energy \"tsc && vite build\"",
-    "build:pages": "node scripts/fetch-live-seed.mjs && npm run build:openapi && npm run build:agent-skills && cross-env-shell GITHUB_PAGES=1 VITE_STATIC_MIRROR=1 VITE_UNLOCK_ALL=1 VITE_WS_API_URL=https://api.worldmonitor.app \"tsc && vite build\"",
+    "build:pages": "node scripts/fetch-live-seed.mjs && npm run build:openapi && npm run build:agent-skills && cross-env-shell GITHUB_PAGES=1 VITE_STATIC_MIRROR=1 VITE_UNLOCK_ALL=1 VITE_WS_API_URL=https://livewweb.vercel.app \"tsc && vite build\"",
     "typecheck": "tsc --noEmit",
     "typecheck:api": "tsc --noEmit -p tsconfig.api.json && node scripts/audit-convex-string-calls.cjs",
     "typecheck:all": "tsc --noEmit && tsc --noEmit -p tsconfig.api.json && node scripts/audit-convex-string-calls.cjs",

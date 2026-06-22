@@ -1,0 +1,44 @@
+name: Refresh Live Seed
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-live-seed
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install and fetch live seed
+        run: |
+          npm ci --ignore-scripts
+          node scripts/fetch-live-seed.mjs
+
+      - name: Push live-seed to gh-pages branch
+        run: |
+          git fetch origin gh-pages
+          git worktree add /tmp/gh-pages origin/gh-pages
+          rm -rf /tmp/gh-pages/live-seed
+          cp -r public/live-seed /tmp/gh-pages/live-seed
+          cd /tmp/gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live-seed
+          git diff --staged --quiet || git commit -m "chore: refresh live-seed $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push origin HEAD:gh-pages

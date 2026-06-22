@@ -218,3 +218,31 @@ export async function fetchBootstrapData(): Promise<void> {
     clearTimeout(slowTimeout);
   }
 }
+
+const LIVE_SEED_POLL_MS = 5 * 60 * 1000;
+let liveSeedPollTimer: ReturnType<typeof setInterval> | null = null;
+
+/** GitHub Pages: re-hydrate from CI-refreshed /live-seed/ without a live API. */
+export function startLiveSeedPolling(): void {
+  if (!isStaticWebMirror() || liveSeedPollTimer) return;
+
+  const refresh = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    for (const tier of ['fast', 'slow'] as const) {
+      const baked = await loadBakedSeedTier(tier);
+      if (baked && Object.keys(baked).length > 0) {
+        populateCache(baked);
+        lastHydrationState = {
+          source: 'live',
+          tiers: {
+            ...lastHydrationState.tiers,
+            [tier]: { source: 'live', updatedAt: Date.now() },
+          },
+        };
+      }
+    }
+  };
+
+  void refresh();
+  liveSeedPollTimer = setInterval(() => { void refresh(); }, LIVE_SEED_POLL_MS);
+}

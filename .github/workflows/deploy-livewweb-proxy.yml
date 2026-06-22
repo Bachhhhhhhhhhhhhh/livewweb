@@ -1,0 +1,50 @@
+name: Deploy Live API Proxy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/livewweb-proxy/**'
+      - '.github/workflows/deploy-livewweb-proxy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: livewweb-proxy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    defaults:
+      run:
+        working-directory: workers/livewweb-proxy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install wrangler
+        run: npm install --no-audit --no-fund
+
+      - name: Deploy Cloudflare Worker
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -e
+          npx wrangler deploy 2>&1 | tee /tmp/wrangler.log
+          url=$(grep -oE 'https://livewweb-proxy\.[a-z0-9-]+\.workers\.dev' /tmp/wrangler.log | head -1 || true)
+          if [ -z "$url" ]; then
+            url="https://livewweb-proxy.${CLOUDFLARE_ACCOUNT_ID}.workers.dev"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Proxy URL: $url"

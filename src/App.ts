@@ -82,7 +82,7 @@ import { initI18n, t } from '@/services/i18n';
 
 import { computeDefaultDisabledSources, getLocaleBoostedSources, getTotalFeedCount, FEEDS, INTEL_SOURCES } from '@/config/feeds';
 import { selectSourcesUnderCap, findFullyDisabledCategories } from '@/services/source-cap';
-import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, type BootstrapHydrationState } from '@/services/bootstrap';
+import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, startLiveSeedPolling, type BootstrapHydrationState } from '@/services/bootstrap';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
 import { isStaticWebMirror } from '@/services/static-mirror';
 import { describeFreshness } from '@/services/persistent-cache';
@@ -1107,6 +1107,7 @@ export class App {
     // Hydrate in-memory cache from bootstrap endpoint (before panels construct and fetch)
     await fetchBootstrapData();
     this.bootstrapHydrationState = getBootstrapHydrationState();
+    startLiveSeedPolling();
 
     // Verify OAuth OTT and hydrate auth session BEFORE any UI subscribes to auth state
     await initAuthState();

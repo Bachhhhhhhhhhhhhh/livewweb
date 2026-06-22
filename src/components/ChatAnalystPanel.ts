@@ -4,6 +4,8 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { postProcessAnalystHtml } from '@/utils/analyst-markdown';
 import { premiumFetch } from '@/services/premium-fetch';
+import { canUseClientAnalyst, streamClientAnalyst } from '@/services/client-analyst';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { trackAnalystControlAction } from '@/services/analytics';
 import { h, replaceChildren, setTrustedHtml, trustedHtml, type TrustedHtml } from '@/utils/dom-utils';
 import {
@@ -500,8 +502,29 @@ export class ChatAnalystPanel extends Panel {
       });
 
       if (!res.ok) {
+        if (isStaticWebMirror() && (res.status === 404 || res.status >= 500) && canUseClientAnalyst()) {
+          const clientResult = await streamClientAnalyst(
+            trimmedQuery,
+            trimmedHistory,
+            this.domainFocus,
+            (text) => {
+              accumulatedText = text;
+              setTrustedHtml(streamingBody, renderMarkdown(text));
+              this.scrollToBottom();
+            },
+            this.streamAbort.signal,
+          );
+          if (clientResult === 'done') {
+            this.finalizeStreamingBubble(streamingBody, accumulatedText, true);
+            this.pushHistory(trimmedQuery, accumulatedText);
+            return;
+          }
+        }
         const err = res.status === 403 ? 'Pro subscription required.' : `Error ${res.status}`;
-        this.finalizeStreamingBubble(streamingBody, `⚠ ${err}`, false);
+        const hint = isStaticWebMirror() && !canUseClientAnalyst()
+          ? `${err} Add GROQ_API_KEY in Settings for AI, or run npm run dev:live locally.`
+          : err;
+        this.finalizeStreamingBubble(streamingBody, `⚠ ${hint}`, false);
         return;
       }
 
@@ -533,8 +556,29 @@ export class ChatAnalystPanel extends Panel {
         } else {
           this.finalizeStreamingBubble(streamingBody, '⚠ Request cancelled.', false);
         }
+      } else if (isStaticWebMirror() && canUseClientAnalyst()) {
+        const clientResult = await streamClientAnalyst(
+          trimmedQuery,
+          trimmedHistory,
+          this.domainFocus,
+          (text) => {
+            accumulatedText = text;
+            setTrustedHtml(streamingBody, renderMarkdown(text));
+            this.scrollToBottom();
+          },
+          this.streamAbort.signal,
+        );
+        if (clientResult === 'done') {
+          this.finalizeStreamingBubble(streamingBody, accumulatedText, true);
+          this.pushHistory(trimmedQuery, accumulatedText);
+        } else {
+          this.finalizeStreamingBubble(streamingBody, '⚠ AI unavailable. Add GROQ_API_KEY in Settings.', false);
+        }
       } else {
-        this.finalizeStreamingBubble(streamingBody, '⚠ Network error. Try again.', false);
+        const hint = isStaticWebMirror()
+          ? '⚠ API offline. Add GROQ_API_KEY in Settings for AI, or use npm run dev:live.'
+          : '⚠ Network error. Try again.';
+        this.finalizeStreamingBubble(streamingBody, hint, false);
       }
     } finally {
       this.streamAbort = null;

@@ -1,0 +1,12 @@
+name = "livewweb-proxy"
+main = "src/index.js"
+compatibility_date = "2025-05-01"
+
+[vars]
+UNLOCK_ALL = "1"
+
+# Set GROQ_API_KEY in Cloudflare dashboard or via `wrangler secret put GROQ_API_KEY`
+# Required for /api/chat-analyst AI streaming on GitHub Pages.
+
+[observability]
+enabled = true

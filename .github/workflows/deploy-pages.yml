@@ -39,7 +39,7 @@ jobs:
           GITHUB_PAGES: '1'
           VITE_STATIC_MIRROR: '1'
           VITE_UNLOCK_ALL: '1'
-          VITE_WS_API_URL: 'https://api.worldmonitor.app'
+          VITE_WS_API_URL: ${{ vars.LIVEWWEB_API_URL || 'https://livewweb.vercel.app' }}
           PROXY_TO_UPSTREAM_API: '1'
 
       - name: Prepare GitHub Pages entrypoints

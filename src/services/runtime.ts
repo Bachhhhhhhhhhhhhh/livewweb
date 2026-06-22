@@ -140,9 +140,9 @@ export function getConfiguredWebApiBaseUrl(): string {
     return '';
   }
 
-  // GitHub Pages mirror: use production API (Vercel fork optional via VITE_WS_API_URL).
+  // GitHub Pages: production API blocks github.io CORS — use fork proxy (VITE_WS_API_URL / Vercel).
   if (isStaticWebMirror()) {
-    return DEFAULT_WEB_API_URL;
+    return 'https://livewweb.vercel.app';
   }
 
   const hostname = window.location?.hostname ?? '';
