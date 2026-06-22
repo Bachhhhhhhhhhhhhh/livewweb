@@ -8,6 +8,7 @@ public/blog/
 .env.local
 cookies.txt
 scripts/cloudflared.exe
+public/live-seed/
 .playwright-mcp/
 *-network.txt
 .vercel

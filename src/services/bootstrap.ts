@@ -1,5 +1,7 @@
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
+import { isStaticWebMirror } from '@/services/static-mirror';
+import { withBase } from '@/utils/app-base';
 
 const hydrationCache = new Map<string, unknown>();
 const BOOTSTRAP_CACHE_PREFIX = 'bootstrap:tier:';
@@ -93,6 +95,20 @@ function combineHydrationSources(states: BootstrapTierHydrationState[]): Bootstr
   return 'mixed';
 }
 
+/** CI-baked bootstrap seed shipped with GitHub Pages builds. */
+async function loadBakedSeedTier(tier: 'fast' | 'slow'): Promise<Record<string, unknown> | null> {
+  if (!isStaticWebMirror()) return null;
+  try {
+    const resp = await fetch(withBase(`/live-seed/bootstrap-${tier}.json`));
+    if (!resp.ok) return null;
+    const payload = (await resp.json()) as { data?: Record<string, unknown> };
+    const data = payload.data ?? {};
+    return Object.keys(data).length > 0 ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchTier(tier: 'fast' | 'slow', signal: AbortSignal): Promise<BootstrapTierHydrationState> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     const cached = await readCachedTier(tier, true); // age gate skipped: any snapshot beats blank offline
@@ -121,6 +137,11 @@ async function fetchTier(tier: 'fast' | 'slow', signal: AbortSignal): Promise<Bo
   }
 
   if (Object.keys(liveData).length === 0) {
+    const baked = await loadBakedSeedTier(tier);
+    if (baked) {
+      populateCache(baked);
+      return { source: 'live', updatedAt: Date.now() };
+    }
     const cached = await readCachedTier(tier);
     if (cached) {
       populateCache(cached.data);
