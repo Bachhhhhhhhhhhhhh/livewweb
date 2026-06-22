@@ -1500,8 +1500,18 @@ export class EventHandlerManager implements AppModule {
   startHeaderClock(): void {
     const el = document.getElementById('headerClock');
     if (!el) return;
+    const vnTz = 'Asia/Ho_Chi_Minh';
     const tick = () => {
-      el.textContent = new Date().toUTCString().replace('GMT', 'UTC');
+      el.textContent = new Date().toLocaleString('vi-VN', {
+        timeZone: vnTz,
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }) + ' ICT';
     };
     tick();
     this.clockIntervalId = setInterval(tick, 1000);

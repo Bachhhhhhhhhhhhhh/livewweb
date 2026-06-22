@@ -178,6 +178,7 @@ export function isProWidgetEnabled(): boolean {
 }
 
 export function isProUser(): boolean {
+  if (import.meta.env.VITE_UNLOCK_ALL === '1') return true;
   return (
     isWidgetFeatureEnabled() ||
     isProWidgetEnabled() ||

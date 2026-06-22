@@ -163,6 +163,7 @@ export function hasTier(minTier: number): boolean {
  * Returns true if entitlement data exists, plan is not free, and hasn't expired.
  */
 export function isEntitled(): boolean {
+  if (import.meta.env.VITE_UNLOCK_ALL === '1') return true;
   return (
     currentState !== null &&
     currentState.planKey !== 'free' &&

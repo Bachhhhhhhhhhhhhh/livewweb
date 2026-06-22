@@ -491,7 +491,7 @@ export class PanelLayoutManager implements AppModule {
   }
 
   async renderLayout(): Promise<void> {
-    const isGlobeMode = getStoredMapModePreference() === 'globe';
+    const isGlobeMode = import.meta.env.VITE_UNLOCK_ALL === '1' || getStoredMapModePreference() === 'globe';
 
     setTrustedHtml(this.ctx.container, trustedHtml(`
       ${this.ctx.isDesktopApp ? '<div class="tauri-titlebar" data-tauri-drag-region></div>' : ''}
@@ -1129,7 +1129,7 @@ export class PanelLayoutManager implements AppModule {
     const panelsGrid = document.getElementById('panelsGrid')!;
 
     const mapContainer = document.getElementById('mapContainer') as HTMLElement;
-    const preferGlobe = getStoredMapModePreference() === 'globe';
+    const preferGlobe = import.meta.env.VITE_UNLOCK_ALL === '1' || getStoredMapModePreference() === 'globe';
     // Dynamic import: keeps maplibre-gl + @deck.gl/* + @loaders.gl + @luma.gl
     // out of the entry chunk. Loads in parallel with paint, so the map mounts
     // a beat after the panel grid renders instead of blocking it.

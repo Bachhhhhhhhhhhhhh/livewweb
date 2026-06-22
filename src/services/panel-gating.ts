@@ -27,6 +27,7 @@ export enum PanelGateReason {
  * signals that aren't already covered by isProUser.
  */
 export function hasPremiumAccess(authState?: AuthSession): boolean {
+  if (import.meta.env.VITE_UNLOCK_ALL === '1') return true;
   if (getSecretState('WORLDMONITOR_API_KEY').present) return true;
   if (isProUser()) return true;
   if (authState?.user?.role === 'pro') return true;
@@ -41,6 +42,7 @@ export function getPanelGateReason(
   authState: AuthSession,
   isPremium: boolean,
 ): PanelGateReason {
+  if (import.meta.env.VITE_UNLOCK_ALL === '1') return PanelGateReason.NONE;
   // Non-premium panels are never gated
   if (!isPremium) return PanelGateReason.NONE;
 

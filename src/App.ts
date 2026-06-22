@@ -1099,7 +1099,7 @@ export class App {
     // wms_-prefixed HMAC token before the first API call. Desktop has its own
     // API key path and doesn't need this; Clerk-authenticated users will pass
     // their JWT in a Bearer header and the interceptor steps aside.
-    if (!isDesktopRuntime() && !isStaticWebMirror()) {
+    if (!isDesktopRuntime()) {
       installWmSessionFetchInterceptor();
       await ensureWmSession();
     }

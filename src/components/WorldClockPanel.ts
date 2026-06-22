@@ -24,6 +24,8 @@ const WORLD_CITIES: CityEntry[] = [
   { id: 'riyadh', city: 'Riyadh', label: 'Tadawul', timezone: 'Asia/Riyadh', marketOpen: 10, marketClose: 15 },
   { id: 'dubai', city: 'Dubai', label: 'DFM', timezone: 'Asia/Dubai', marketOpen: 10, marketClose: 14 },
   { id: 'mumbai', city: 'Mumbai', label: 'NSE', timezone: 'Asia/Kolkata', marketOpen: 9, marketClose: 15 },
+  { id: 'ho-chi-minh', city: 'Ho Chi Minh', label: 'VN', timezone: 'Asia/Ho_Chi_Minh', marketOpen: 9, marketClose: 15 },
+  { id: 'hanoi', city: 'Hanoi', label: 'VN', timezone: 'Asia/Ho_Chi_Minh', marketOpen: 9, marketClose: 15 },
   { id: 'bangkok', city: 'Bangkok', label: 'SET', timezone: 'Asia/Bangkok', marketOpen: 10, marketClose: 16 },
   { id: 'singapore', city: 'Singapore', label: 'SGX', timezone: 'Asia/Singapore', marketOpen: 9, marketClose: 17 },
   { id: 'hong-kong', city: 'Hong Kong', label: 'HKEX', timezone: 'Asia/Hong_Kong', marketOpen: 9, marketClose: 16 },
@@ -48,7 +50,7 @@ const CITY_REGIONS: { name: string; ids: string[] }[] = [
   { name: 'Americas', ids: ['new-york', 'chicago', 'toronto', 'los-angeles', 'mexico-city', 'sao-paulo', 'buenos-aires'] },
   { name: 'Europe', ids: ['london', 'paris', 'frankfurt', 'zurich', 'moscow', 'istanbul'] },
   { name: 'Middle East & Africa', ids: ['riyadh', 'dubai', 'cairo', 'lagos', 'johannesburg'] },
-  { name: 'Asia-Pacific', ids: ['mumbai', 'bangkok', 'jakarta', 'kuala-lumpur', 'singapore', 'hong-kong', 'shanghai', 'taipei', 'seoul', 'tokyo', 'sydney', 'auckland'] },
+  { name: 'Asia-Pacific', ids: ['ho-chi-minh', 'hanoi', 'mumbai', 'bangkok', 'jakarta', 'kuala-lumpur', 'singapore', 'hong-kong', 'shanghai', 'taipei', 'seoul', 'tokyo', 'sydney', 'auckland'] },
 ];
 
 const TIMEZONE_TO_CITY: Record<string, string> = {};
@@ -61,11 +63,12 @@ TIMEZONE_TO_CITY['US/Central'] = 'chicago';
 TIMEZONE_TO_CITY['US/Pacific'] = 'los-angeles';
 TIMEZONE_TO_CITY['US/Mountain'] = 'new-york';
 TIMEZONE_TO_CITY['Asia/Calcutta'] = 'mumbai';
-TIMEZONE_TO_CITY['Asia/Saigon'] = 'bangkok';
+TIMEZONE_TO_CITY['Asia/Saigon'] = 'ho-chi-minh';
+TIMEZONE_TO_CITY['Asia/Ho_Chi_Minh'] = 'ho-chi-minh';
 TIMEZONE_TO_CITY['Pacific/Sydney'] = 'sydney';
 
 const STORAGE_KEY = 'worldmonitor-world-clock-cities';
-const DEFAULT_CITIES = ['new-york', 'london', 'dubai', 'bangkok', 'tokyo', 'sydney'];
+const DEFAULT_CITIES = ['ho-chi-minh', 'hanoi', 'tokyo', 'singapore', 'london', 'new-york'];
 
 function detectHomeCity(): string | null {
   try {
