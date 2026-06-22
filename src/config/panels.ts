@@ -1,4 +1,5 @@
 import type { PanelConfig, MapLayers, DataSourceId } from '@/types';
+import { isForkUnlockAll } from '@/config/fork-unlock';
 import { SITE_VARIANT } from './variant';
 // boundary-ignore: isDesktopRuntime is a pure env probe with no service dependencies
 import { isDesktopRuntime } from '@/services/runtime';
@@ -1215,7 +1216,7 @@ export function restoreFreeMapPanelAccess(
  * Mirrors the entitlement checks in panel-layout.ts (single source of truth).
  */
 export function isPanelEntitled(key: string, config: PanelConfig, isPro = false): boolean {
-  if (import.meta.env.VITE_UNLOCK_ALL === '1') return true;
+  if (isForkUnlockAll()) return true;
   if (!config.premium) return true;
   // Dodo entitlements unlock all premium panels
   if (isEntitled()) return true;

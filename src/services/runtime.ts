@@ -140,6 +140,11 @@ export function getConfiguredWebApiBaseUrl(): string {
     return '';
   }
 
+  // GitHub Pages mirror: route API calls to the fork's Vercel deployment.
+  if (isStaticWebMirror()) {
+    return 'https://livewweb.vercel.app';
+  }
+
   const hostname = window.location?.hostname ?? '';
   if (!isWorldMonitorWebHost(hostname)) {
     return '';
@@ -485,12 +490,17 @@ export function installRuntimeFetchPatch(): void {
 
 import { PREMIUM_RPC_PATHS as WEB_PREMIUM_API_PATHS } from '@/shared/premium-paths';
 
-const ALLOWED_REDIRECT_HOSTS = /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*worldmonitor\.app(:\d+)?$/;
+const ALLOWED_REDIRECT_HOST_PATTERNS = [
+  /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*worldmonitor\.app(:\d+)?$/,
+  // Self-hosted Vercel API for this fork (GitHub Pages static mirror)
+  /^https:\/\/livewweb(-[a-z0-9-]+)?\.vercel\.app$/,
+];
 
 function isAllowedRedirectTarget(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return ALLOWED_REDIRECT_HOSTS.test(parsed.origin) || parsed.hostname === 'localhost';
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+    return ALLOWED_REDIRECT_HOST_PATTERNS.some((pattern) => pattern.test(parsed.origin));
   } catch {
     return false;
   }

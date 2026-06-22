@@ -1,3 +1,4 @@
+import { isForkUnlockAll } from '@/config/fork-unlock';
 import type { AppContext, AppModule } from '@/app/app-context';
 import { applyAgentBusAction } from '@/app/agent-bus-applier';
 import { normalizeExclusiveChoropleths } from '@/components/resilience-choropleth-utils';
@@ -459,6 +460,7 @@ export class PanelLayoutManager implements AppModule {
       // over-gate, accept the one-doomed-fetch-per-session cost
       // for API-key-only + free-Clerk users as the lesser harm.
       if (
+        !isForkUnlockAll() &&
         reason === PanelGateReason.NONE &&
         WEB_CLERK_PRO_ONLY_PANELS.has(key) &&
         getEntitlementState() !== null &&

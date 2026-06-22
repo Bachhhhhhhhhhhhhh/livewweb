@@ -1,4 +1,12 @@
 {
+  "env": {
+    "UNLOCK_ALL": "1"
+  },
+  "build": {
+    "env": {
+      "UNLOCK_ALL": "1"
+    }
+  },
   "ignoreCommand": "bash scripts/vercel-ignore.sh",
   "crons": [],
   "redirects": [

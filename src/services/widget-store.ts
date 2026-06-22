@@ -1,3 +1,4 @@
+import { isForkUnlockAll } from '@/config/fork-unlock';
 import { loadFromStorage, saveToStorage } from '@/utils';
 import { clearPanelColSpanEntry, clearPanelSpanEntry } from '@/utils/panel-storage';
 import { sanitizeWidgetHtml } from '@/utils/widget-sanitizer';
@@ -178,7 +179,7 @@ export function isProWidgetEnabled(): boolean {
 }
 
 export function isProUser(): boolean {
-  if (import.meta.env.VITE_UNLOCK_ALL === '1') return true;
+  if (isForkUnlockAll()) return true;
   return (
     isWidgetFeatureEnabled() ||
     isProWidgetEnabled() ||
