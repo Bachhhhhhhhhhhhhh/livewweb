@@ -1,4 +1,5 @@
 import type { FeatureCollection, Geometry, GeoJsonProperties, Position } from 'geojson';
+import { withBase } from '@/utils/app-base';
 
 interface IndexedCountryGeometry {
   code: string;
@@ -12,7 +13,7 @@ interface CountryHit {
   name: string;
 }
 
-const COUNTRY_GEOJSON_URL = '/data/countries.geojson';
+const COUNTRY_GEOJSON_URL = withBase('/data/countries.geojson');
 
 /** Optional higher-resolution boundary overrides sourced from Natural Earth (served from R2 CDN). */
 const COUNTRY_OVERRIDES_URL = 'https://maps.worldmonitor.app/country-boundary-overrides.geojson';

@@ -92,6 +92,7 @@ import {
 import { SatelliteFiresPanel } from '@/components/SatelliteFiresPanel';
 import { focusInvestmentOnMap } from '@/services/investments-focus';
 import { debounce, saveToStorage } from '@/utils';
+import { withBase } from '@/utils/app-base';
 import { escapeHtml } from '@/utils/sanitize';
 import {
   FEEDS,
@@ -710,7 +711,7 @@ export class PanelLayoutManager implements AppModule {
       </div>
       <footer class="site-footer">
         <div class="site-footer-brand">
-          <img src="/favico/favicon-32x32.png" alt="" width="28" height="28" class="site-footer-icon" />
+          <img src="${withBase('/favico/favicon-32x32.png')}" alt="" width="28" height="28" class="site-footer-icon" />
           <div class="site-footer-brand-text">
             <span class="site-footer-name">WORLD MONITOR</span>
             <span class="site-footer-sub">v${__APP_VERSION__} &middot; <a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener" class="site-footer-credit">Brian Bach Truong &middot; Data Analyst, Honda</a></span>

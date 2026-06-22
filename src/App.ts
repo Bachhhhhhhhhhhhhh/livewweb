@@ -84,6 +84,7 @@ import { computeDefaultDisabledSources, getLocaleBoostedSources, getTotalFeedCou
 import { selectSourcesUnderCap, findFullyDisabledCategories } from '@/services/source-cap';
 import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, type BootstrapHydrationState } from '@/services/bootstrap';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { describeFreshness } from '@/services/persistent-cache';
 import { DesktopUpdater } from '@/app/desktop-updater';
 import { CountryIntelManager } from '@/app/country-intel';
@@ -1098,7 +1099,7 @@ export class App {
     // wms_-prefixed HMAC token before the first API call. Desktop has its own
     // API key path and doesn't need this; Clerk-authenticated users will pass
     // their JWT in a Bearer header and the interceptor steps aside.
-    if (!isDesktopRuntime()) {
+    if (!isDesktopRuntime() && !isStaticWebMirror()) {
       installWmSessionFetchInterceptor();
       await ensureWmSession();
     }
@@ -1110,7 +1111,9 @@ export class App {
     // Verify OAuth OTT and hydrate auth session BEFORE any UI subscribes to auth state
     await initAuthState();
     initAuthAnalytics();
-    installCloudPrefsSync(SITE_VARIANT);
+    if (!isStaticWebMirror()) {
+      installCloudPrefsSync(SITE_VARIANT);
+    }
     window.addEventListener(CLOUD_PREFS_APPLIED_EVENT, this.handleCloudPrefsApplied);
     // Install the followed-countries auth listener once. Drives the
     // anon→signed-in handoff (mergeAnonymousLocal mutation) and sign-out

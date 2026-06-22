@@ -9,6 +9,7 @@ import { GeoJsonLayer, ScatterplotLayer, PathLayer, IconLayer, TextLayer, Polygo
 import maplibregl from 'maplibre-gl';
 import { FALLBACK_DARK_STYLE, FALLBACK_LIGHT_STYLE, getMapProvider, getMapTheme, isLightMapTheme } from '@/config/basemap';
 import { registerPMTilesProtocol, getStyleForProvider } from '@/config/basemap-styles';
+import { withBase } from '@/utils/app-base';
 import Supercluster from 'supercluster';
 import type {
   MapLayers,
@@ -228,8 +229,8 @@ const VIEW_PRESETS: Record<DeckMapView, { longitude: number; latitude: number; z
 const MAP_INTERACTION_MODE: MapInteractionMode =
   import.meta.env.VITE_MAP_INTERACTION_MODE === 'flat' ? 'flat' : '3d';
 
-const HAPPY_DARK_STYLE = '/map-styles/happy-dark.json';
-const HAPPY_LIGHT_STYLE = '/map-styles/happy-light.json';
+const HAPPY_DARK_STYLE = withBase('/map-styles/happy-dark.json');
+const HAPPY_LIGHT_STYLE = withBase('/map-styles/happy-light.json');
 const isHappyVariant = SITE_VARIANT === 'happy';
 
 // Zoom thresholds for layer visibility and labels (matches old Map.ts)

@@ -8,6 +8,7 @@ import { isFeatureAvailable } from '@/services/runtime-config';
 import type { SpendingSummary } from '@/services/usa-spending';
 import { formatAwardAmount, getAwardTypeIcon } from '@/services/usa-spending';
 import { getCSSColor } from '@/utils';
+import { withBase } from '@/utils/app-base';
 import { sparkline } from '@/utils/sparkline';
 import type { GetEconomicStressResponse, EconomicStressComponent } from '@/generated/client/worldmonitor/economic/v1/service_client';
 
@@ -40,7 +41,7 @@ function notifyIfStressCrossed(score: number): void {
     sessionStorage.setItem(STRESS_NOTIFICATION_KEY, String(level));
     new Notification('Economic Stress Alert', {
       body: `Composite stress index reached ${score.toFixed(1)} (${score >= 85 ? 'Critical' : 'Severe'})`,
-      icon: '/favico/favicon-32x32.png',
+      icon: withBase('/favico/favicon-32x32.png'),
       tag: 'economic-stress',
     });
   } catch { /* Notification API can throw in some environments */ }

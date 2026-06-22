@@ -1,5 +1,6 @@
 import { enqueueSentryCall } from '@/bootstrap/sentry-defer';
 import { getCurrentClerkUser, scheduleClerkLoad, subscribeClerk } from './clerk';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 /** Minimal user profile exposed to UI components. */
 export interface AuthUser {
@@ -57,6 +58,10 @@ function snapshotSession(): AuthSession {
  * the real session, and flips `isPending` to `false`.
  */
 export async function initAuthState(): Promise<void> {
+  if (isStaticWebMirror()) {
+    _currentSession = { user: null, isPending: false };
+    return;
+  }
   scheduleClerkLoad();
 }
 

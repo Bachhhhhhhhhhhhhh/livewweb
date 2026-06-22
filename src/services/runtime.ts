@@ -1,5 +1,6 @@
 import { SITE_VARIANT } from '@/config/variant';
 import { getClerkToken } from '@/services/clerk';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 const ENV = (() => {
   try {
@@ -507,9 +508,12 @@ export function installWebApiRedirect(): void {
 
   const nativeFetch = window.fetch.bind(window);
   const shouldRedirectPath = (pathWithQuery: string): boolean => pathWithQuery.startsWith('/api/');
-  const withCredentials = (init?: RequestInit): RequestInit => (
-    { ...(init ?? {}), credentials: init?.credentials ?? 'include' }
-  );
+  const withCredentials = (init?: RequestInit): RequestInit => {
+    const credentials = isStaticWebMirror()
+      ? (init?.credentials ?? 'omit')
+      : (init?.credentials ?? 'include');
+    return { ...(init ?? {}), credentials };
+  };
 
   /**
    * For premium API paths, inject auth when the user has premium access but no

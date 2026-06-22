@@ -13,6 +13,8 @@
 // does NOT rewrite it to the canonical API host — it stays same-origin with
 // the bundle, which is the correct comparison target.
 
+import { withBase } from '@/utils/app-base';
+
 interface EventTargetLike {
   addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
   removeEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
@@ -120,7 +122,7 @@ export function installStaleBundleCheck(options: StaleBundleCheckOptions = {}): 
     try {
       // Cache-bust to defeat any intermediate proxy that might serve a
       // stale build-hash.txt (the file itself is emitted with the deploy).
-      const res = await fetchImpl(`/build-hash.txt?t=${t}`, { cache: 'no-store' });
+      const res = await fetchImpl(`${withBase('/build-hash.txt')}?t=${t}`, { cache: 'no-store' });
       if (!res.ok) return;
       const deployedHash = (await res.text()).trim();
       if (!deployedHash || deployedHash === 'dev') return;

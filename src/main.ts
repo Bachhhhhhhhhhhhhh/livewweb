@@ -256,6 +256,8 @@ import { SITE_VARIANT } from '@/config/variant';
 import { clearChunkReloadGuard, installChunkReloadGuard } from '@/bootstrap/chunk-reload';
 import { installStaleBundleCheck } from '@/bootstrap/stale-bundle-check';
 import { installSwUpdateHandler } from '@/bootstrap/sw-update';
+import { withBase } from '@/utils/app-base';
+import { shouldRegisterServiceWorker } from '@/services/static-mirror';
 
 // Auto-reload on stale chunk 404s after deployment (Vite fires this for modulepreload failures).
 const chunkReloadStorageKey = installChunkReloadGuard(__APP_VERSION__);
@@ -289,8 +291,8 @@ if (SITE_VARIANT && SITE_VARIANT !== 'full') {
   // Swap favicons to variant-specific versions before browser finishes fetching defaults
   document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(link => {
     link.href = link.href
-      .replace(/\/favico\/favicon/g, `/favico/${SITE_VARIANT}/favicon`)
-      .replace(/\/favico\/apple-touch-icon/g, `/favico/${SITE_VARIANT}/apple-touch-icon`);
+      .replace(/\/favico\/favicon/g, `${withBase('/favico')}/${SITE_VARIANT}/favicon`)
+      .replace(/\/favico\/apple-touch-icon/g, `${withBase('/favico')}/${SITE_VARIANT}/apple-touch-icon`);
   });
 }
 
@@ -360,7 +362,7 @@ if ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) {
   });
 }
 
-if (!('__TAURI_INTERNALS__' in window) && !('__TAURI__' in window) && 'serviceWorker' in navigator) {
+if (shouldRegisterServiceWorker() && 'serviceWorker' in navigator) {
   installSwUpdateHandler({ version: __APP_VERSION__ });
 
   const SW_UPDATE_SUCCESS_INTERVAL_MS = 60 * 60 * 1000;
@@ -384,7 +386,7 @@ if (!('__TAURI_INTERNALS__' in window) && !('__TAURI__' in window) && 'serviceWo
     } catch {}
   };
 
-  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  navigator.serviceWorker.register(withBase('/sw.js'), { scope: import.meta.env.BASE_URL || '/' })
     .then((registration) => {
       console.log('[PWA] Service worker registered');
 

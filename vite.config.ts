@@ -829,7 +829,7 @@ export default defineConfig(({ mode }) => {
       gpsjamDevPlugin(),
       sebufApiPlugin(),
       brotliPrecompressPlugin(),
-      VitePWA({
+      !isGitHubPages && VitePWA({
         registerType: 'autoUpdate',
         injectRegister: false,
 

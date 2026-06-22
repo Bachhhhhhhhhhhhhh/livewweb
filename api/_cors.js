@@ -1,5 +1,9 @@
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https:\/\/(.*\.)?worldmonitor\.app$/,
+  // GitHub Pages demo mirrors (e.g. bachhhhhhhhhhhhhh.github.io/livewweb)
+  /^https:\/\/[a-z0-9]([a-z0-9-]*[a-z0-9])?\.github\.io$/,
+  // Self-hosted Vercel deployments for this fork
+  /^https:\/\/livewweb(-[a-z0-9-]+)?\.vercel\.app$/,
   // Vercel preview deployments under the "eliewm" team scope, e.g.
   //   worldmonitor-git-<branch>-eliewm.vercel.app  (git-branch alias)
   //   worldmonitor-<hash>-eliewm.vercel.app        (deployment URL)
