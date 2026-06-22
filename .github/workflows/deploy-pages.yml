@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
@@ -15,8 +17,13 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
 
       - uses: actions/setup-node@v4
         with:
@@ -84,25 +91,9 @@ jobs:
           console.log('Asset integrity check passed');
           NODE
 
-      - name: Publish to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-          force_orphan: true
-          enable_jekyll: false
+          path: dist
 
-      - name: Point GitHub Pages at gh-pages branch
-        run: |
-          code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
-            -X PUT \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/pages" \
-            -d '{"build_type":"legacy","source":{"branch":"gh-pages","path":"/"}}')
-          echo "Pages configure HTTP $code"
-          cat /tmp/pages.json
-
-      - name: Deployment URL
-        run: echo "Live at https://bachhhhhhhhhhhhhh.github.io/livewweb/"
+      - uses: actions/deploy-pages@v4
+        id: deployment
