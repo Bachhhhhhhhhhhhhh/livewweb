@@ -1,6 +1,11 @@
 import { Panel } from './Panel';
 import { IDLE_PAUSE_MS, STORAGE_KEYS } from '@/config';
 import { isDesktopRuntime, getLocalApiPort } from '@/services/runtime';
+import {
+  buildYouTubeEmbedBridgeUrl,
+  getYouTubePlayerOrigin,
+  shouldUseYouTubeEmbedBridge,
+} from '@/utils/youtube-embed-origin';
 import { escapeHtml } from '@/utils/sanitize';
 import { t } from '../services/i18n';
 import { track, trackWebcamSelected, trackWebcamRegionFiltered } from '@/services/analytics';
@@ -289,8 +294,18 @@ export class LiveWebcamsPanel extends Panel {
       if (quality !== 'auto') params.set('vq', quality);
       return `http://localhost:${getLocalApiPort()}/api/youtube-embed?${params.toString()}`;
     }
+    if (shouldUseYouTubeEmbedBridge()) {
+      return buildYouTubeEmbedBridgeUrl({
+        videoId,
+        autoplay: true,
+        mute: true,
+        quality: quality !== 'auto' ? quality : undefined,
+        parentOrigin: window.location.origin,
+      });
+    }
+    const trustedOrigin = encodeURIComponent(getYouTubePlayerOrigin());
     const vq = quality !== 'auto' ? `&vq=${quality}` : '';
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&playsinline=1&rel=0&enablejsapi=1&origin=${window.location.origin}${vq}`;
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&playsinline=1&rel=0&enablejsapi=1&origin=${trustedOrigin}&widget_referrer=${trustedOrigin}${vq}`;
   }
 
   private createIframe(feed: WebcamFeed): HTMLIFrameElement {

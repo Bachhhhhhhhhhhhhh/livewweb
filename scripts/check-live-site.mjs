@@ -15,10 +15,12 @@ async function get(path) {
 const checks = [
   '/livewweb/',
   '/livewweb/docs/dashboard.html',
-  '/livewweb/docs/assets/main-6pR2Z-zA.js',
-  '/livewweb/docs/assets/panels-BaHTj8Ql.js',
-  '/livewweb/docs/assets/MapContainer-D7nzWZ68.js',
-  '/livewweb/docs/assets/deck-stack-BfzkESEB.js',
+  '/livewweb/docs/youtube-embed-bridge.html',
+  '/livewweb/docs/live-seed/live-channels.json',
+  '/livewweb/docs/assets/main-BJdsLity.js',
+  '/livewweb/docs/assets/panels-DPLtq3nt.js',
+  '/livewweb/docs/assets/MapContainer-BuNozXs0.js',
+  '/livewweb/docs/assets/deck-stack-BRkKdvRj.js',
   '/livewweb/docs/live-seed/bootstrap-fast.json',
   '/livewweb/docs/live-seed/feed-digest-full-vi.json',
 ];

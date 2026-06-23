@@ -1,6 +1,11 @@
 import { Panel } from './Panel';
 import { fetchLiveVideoInfo } from '@/services/live-news';
 import { isDesktopRuntime, getRemoteApiBaseUrl, getApiBaseUrl, getLocalApiPort } from '@/services/runtime';
+import {
+  buildYouTubeEmbedBridgeUrl,
+  getYouTubePlayerOrigin,
+  shouldUseYouTubeEmbedBridge,
+} from '@/utils/youtube-embed-origin';
 import { t } from '../services/i18n';
 import { loadFromStorage, saveToStorage } from '@/utils';
 import { IDLE_PAUSE_MS, STORAGE_KEYS, SITE_VARIANT } from '@/config';
@@ -385,9 +390,9 @@ export class LiveNewsPanel extends Panel {
   private readonly youtubeOrigin: string | null;
   private forceFallbackVideoForNextInit = false;
 
-  // Desktop: always use sidecar embed for YouTube (tauri:// origin gets 153).
+  // Desktop + GitHub Pages: iframe bridge (YouTube blocks raw github.io embeds).
   // DIRECT_HLS_MAP channels use native <video> instead.
-  private useDesktopEmbedProxy = isDesktopRuntime();
+  private useDesktopEmbedProxy = isDesktopRuntime() || shouldUseYouTubeEmbedBridge();
   private desktopEmbedIframe: HTMLIFrameElement | null = null;
   private desktopEmbedRenderToken = 0;
   private suppressChannelClick = false;
@@ -514,6 +519,7 @@ export class LiveNewsPanel extends Panel {
 
   private get embedOrigin(): string {
     if (isDesktopRuntime()) return `http://localhost:${getLocalApiPort()}`;
+    if (shouldUseYouTubeEmbedBridge()) return window.location.origin;
     try { return new URL(getRemoteApiBaseUrl()).origin; } catch { return 'https://worldmonitor.app'; }
   }
 
@@ -551,27 +557,7 @@ export class LiveNewsPanel extends Panel {
   }
 
   private static resolveYouTubeOrigin(): string | null {
-    const fallbackOrigin = SITE_VARIANT === 'tech'
-      ? 'https://worldmonitor.app'
-      : 'https://worldmonitor.app';
-
-    try {
-      const { protocol, origin, host } = window.location;
-      if (protocol === 'http:' || protocol === 'https:') {
-        // Desktop webviews commonly run from tauri.localhost which can trigger
-        // YouTube embed restrictions. Use canonical public origin instead.
-        if (host === 'tauri.localhost' || host.endsWith('.tauri.localhost')) {
-          return fallbackOrigin;
-        }
-        return origin;
-      }
-      if (protocol === 'tauri:' || protocol === 'asset:') {
-        return fallbackOrigin;
-      }
-    } catch {
-      // Ignore invalid location values.
-    }
-    return fallbackOrigin;
+    return getYouTubePlayerOrigin();
   }
 
 
@@ -1157,7 +1143,15 @@ export class LiveNewsPanel extends Panel {
     // parentOrigin = actual parent frame origin so postMessage round-trips work.
     params.set('origin', this.youtubeOrigin || 'https://worldmonitor.app');
     params.set('parentOrigin', window.location.origin);
-    const embedUrl = `http://localhost:${getLocalApiPort()}/api/youtube-embed?${params.toString()}`;
+    const embedUrl = isDesktopRuntime()
+      ? `http://localhost:${getLocalApiPort()}/api/youtube-embed?${params.toString()}`
+      : buildYouTubeEmbedBridgeUrl({
+        videoId,
+        autoplay: this.isPlaying,
+        mute: this.isMuted,
+        quality: quality !== 'auto' ? quality : undefined,
+        parentOrigin: window.location.origin,
+      });
 
     if (renderToken !== this.desktopEmbedRenderToken) {
       return;
