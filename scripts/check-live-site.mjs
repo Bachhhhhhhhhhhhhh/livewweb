@@ -63,8 +63,9 @@ try {
   console.error('API proxy check failed:', e.message);
 }
 
-if (main) {
-  const jsRes = await get(`/livewweb/docs/assets/${main}`);
-  const hasApi = jsRes.body.includes('livewweb-proxy') || jsRes.body.includes('VITE_WS_API');
-  console.log('bundle has API proxy ref:', hasApi);
+const panel = dash.body.match(/panels-[A-Za-z0-9_-]+\.js/)?.[0];
+for (const bundle of [main, panel].filter(Boolean)) {
+  const jsRes = await get(`/livewweb/docs/assets/${bundle}`);
+  const hasApi = jsRes.body.includes('livewweb-proxy') || jsRes.body.includes('VITE_WS_API_URL');
+  console.log(`bundle ${bundle} has API proxy ref:`, hasApi);
 }
