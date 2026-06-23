@@ -6,6 +6,9 @@ import { brotliCompress } from 'zlib';
 import { promisify } from 'util';
 import pkg from './package.json';
 import { VARIANT_META, type VariantMeta } from './src/config/variant-meta';
+const GITHUB_PAGES_SITE_NAME = 'The Vision of World';
+const GITHUB_PAGES_SITE_TAGLINE = 'Real-Time Global Intelligence Dashboard';
+const GITHUB_PAGES_SITE_URL = 'https://bachhhhhhhhhhhhhh.github.io/livewweb/docs/dashboard.html';
 import { PREMIUM_RPC_PATHS } from './src/shared/premium-paths';
 
 // Env-dependent constants moved inside defineConfig function
@@ -153,6 +156,7 @@ function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDes
     transformIndexHtml(html) {
       let result = html
         .replace(/<title>.*?<\/title>/, `<title>${activeMeta.title}</title>`)
+        .replace(/<h1>[^<]*<\/h1>/, `<h1>${activeMeta.title}</h1>`)
         .replace(/<meta name="title" content=".*?" \/>/, `<meta name="title" content="${activeMeta.title}" />`)
         .replace(/<meta name="description" content=".*?" \/>/, `<meta name="description" content="${activeMeta.description}" />`)
         .replace(/<meta name="keywords" content=".*?" \/>/, `<meta name="keywords" content="${activeMeta.keywords}" />`)
@@ -167,8 +171,8 @@ function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDes
         .replace(/<meta name="twitter:url" content=".*?" \/>/, `<meta name="twitter:url" content="${activeMeta.url}" />`)
         .replace(/<meta name="twitter:title" content=".*?" \/>/, `<meta name="twitter:title" content="${activeMeta.title}" />`)
         .replace(/<meta name="twitter:description" content=".*?" \/>/, `<meta name="twitter:description" content="${activeMeta.description}" />`)
-        .replace(/"name": "World Monitor"/, `"name": "${activeMeta.siteName}"`)
-        .replace(/"alternateName": "WorldMonitor"/, `"alternateName": "${activeMeta.siteName.replace(' ', '')}"`)
+        .replace(/"name": "(?:World Monitor|The Vision of World)"/g, `"name": "${activeMeta.siteName}"`)
+        .replace(/"alternateName": "(?:WorldMonitor|TheVisionOfWorld)"/g, `"alternateName": "${activeMeta.siteName.replace(/\s+/g, '')}"`)
         .replace(/"url": "https:\/\/worldmonitor\.app\/"/, `"url": "${activeMeta.url}"`)
         .replace(/"description": "Real-time global intelligence dashboard with live news, markets, military tracking, infrastructure monitoring, and geopolitical data."/, `"description": "${activeMeta.description}"`)
         .replace(/"featureList": \[[\s\S]*?\]/, `"featureList": ${JSON.stringify(activeMeta.features, null, 8).replace(/\n/g, '\n      ')}`);
@@ -894,7 +898,16 @@ export default defineConfig(({ mode }) => {
   const isDesktopBuild = process.env.VITE_DESKTOP_RUNTIME === '1';
   const isGitHubPages = process.env.GITHUB_PAGES === '1';
   const activeVariant = process.env.VITE_VARIANT || 'full';
-  const activeMeta = VARIANT_META[activeVariant] || VARIANT_META.full;
+  const baseMeta = VARIANT_META[activeVariant] || VARIANT_META.full;
+  const activeMeta: VariantMeta = isGitHubPages
+    ? {
+        ...baseMeta,
+        title: `${GITHUB_PAGES_SITE_NAME} — ${GITHUB_PAGES_SITE_TAGLINE}`,
+        siteName: GITHUB_PAGES_SITE_NAME,
+        shortName: GITHUB_PAGES_SITE_NAME,
+        url: GITHUB_PAGES_SITE_URL,
+      }
+    : baseMeta;
 
   return {
     // GitHub Pages serves the built site from repo /docs → URL prefix /livewweb/docs/
