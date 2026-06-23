@@ -150,13 +150,27 @@ function brotliPrecompressPlugin(): Plugin {
   };
 }
 
-function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDesktopBuild: boolean): Plugin {
+function htmlVariantPlugin(
+  activeMeta: VariantMeta,
+  activeVariant: string,
+  isDesktopBuild: boolean,
+  isGitHubPages: boolean,
+): Plugin {
   return {
     name: 'html-variant',
     transformIndexHtml(html) {
       let result = html
         .replace(/<title>.*?<\/title>/, `<title>${activeMeta.title}</title>`)
-        .replace(/<h1>[^<]*<\/h1>/, `<h1>${activeMeta.title}</h1>`)
+        .replace(/<h1>[^<]*<\/h1>/, `<h1>${activeMeta.title}</h1>`);
+
+      if (isGitHubPages) {
+        const manifestTag = '<link rel="manifest" href="/livewweb/docs/site.webmanifest" />';
+        if (!result.includes('rel="manifest"')) {
+          result = result.replace('</head>', `    ${manifestTag}\n  </head>`);
+        }
+      }
+
+      result = result
         .replace(/<meta name="title" content=".*?" \/>/, `<meta name="title" content="${activeMeta.title}" />`)
         .replace(/<meta name="description" content=".*?" \/>/, `<meta name="description" content="${activeMeta.description}" />`)
         .replace(/<meta name="keywords" content=".*?" \/>/, `<meta name="keywords" content="${activeMeta.keywords}" />`)
@@ -940,7 +954,7 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
-      htmlVariantPlugin(activeMeta, activeVariant, isDesktopBuild),
+      htmlVariantPlugin(activeMeta, activeVariant, isDesktopBuild, isGitHubPages),
       !isDesktopBuild && dashboardHtmlOutputPlugin(),
       polymarketPlugin(),
       rssProxyPlugin(),

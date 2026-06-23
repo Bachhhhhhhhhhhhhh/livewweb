@@ -43,23 +43,6 @@ jobs:
 
           PROXY_TO_UPSTREAM_API: '1'
 
-      - name: Prepare GitHub Pages entrypoints
-        run: |
-          touch dist/.nojekyll
-          printf '%s\n' \
-            '<!DOCTYPE html>' \
-            '<html lang="en">' \
-            '<head>' \
-            '  <meta charset="UTF-8" />' \
-            '  <meta http-equiv="refresh" content="0;url=./dashboard.html" />' \
-            '  <script>location.replace("./dashboard.html");</script>' \
-            '  <title>World Monitor</title>' \
-            '</head>' \
-            '<body></body>' \
-            '</html>' \
-            > dist/index.html
-          cp dist/index.html dist/404.html
-
       - name: Verify build artifacts
         run: |
           test -f dist/dashboard.html
@@ -102,10 +85,12 @@ jobs:
           cp -r dist docs
           cp -r /tmp/docs-api-backup docs/api
           rm -rf /tmp/docs-api-backup
+          touch docs/.nojekyll
+          node scripts/github-pages-extras.mjs
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs
-          git diff --staged --quiet && echo "docs unchanged" && exit 0
+          git add docs favico favicon.ico site.webmanifest index.html 404.html dashboard.html
+          git diff --staged --quiet && echo "deploy unchanged" && exit 0
           git commit -m "deploy: GitHub Pages static build [skip ci]"
           git push
 

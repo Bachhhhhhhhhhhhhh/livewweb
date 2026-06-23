@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { applyGitHubPagesExtras } from './github-pages-extras.mjs';
 
 const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const dist = join(root, 'dist');
@@ -27,37 +28,7 @@ if (existsSync(apiBackup)) {
 
 writeFileSync(join(docs, '.nojekyll'), '');
 
-const docsIndex = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0;url=./dashboard.html" />
-  <script>location.replace("./dashboard.html");</script>
-  <title>World Monitor</title>
-</head>
-<body></body>
-</html>
-`;
-
-writeFileSync(join(docs, 'index.html'), docsIndex);
-writeFileSync(join(docs, '404.html'), docsIndex);
-
-const rootRedirect = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0;url=/livewweb/docs/dashboard.html" />
-  <script>location.replace('/livewweb/docs/dashboard.html');</script>
-  <title>World Monitor</title>
-</head>
-<body>
-  <p><a href="/livewweb/docs/dashboard.html">Open World Monitor dashboard</a></p>
-</body>
-</html>
-`;
-
-writeFileSync(join(root, 'dashboard.html'), rootRedirect);
-writeFileSync(join(root, '404.html'), rootRedirect);
+const extras = applyGitHubPagesExtras({ docsDir: docs, repoRoot: root });
 
 const html = readFileSync(join(docs, 'dashboard.html'), 'utf8');
 const assetRe = /(?:src|href)="(\/livewweb\/docs\/[^"]+)"/g;
@@ -72,4 +43,4 @@ if (missing.length) {
   process.exit(1);
 }
 
-console.log('Deployed dist → docs/', missing.length === 0 ? 'OK' : '');
+console.log('Deployed dist → docs/', extras);

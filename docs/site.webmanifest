@@ -1,0 +1,33 @@
+{
+  "name": "The Vision of World — Real-Time Global Intelligence",
+  "short_name": "Vision",
+  "description": "Real-time global intelligence dashboard with 3D globe, live news, and geopolitical data.",
+  "start_url": "/livewweb/docs/dashboard.html",
+  "scope": "/livewweb/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0a0f0a",
+  "background_color": "#0a0f0a",
+  "categories": [
+    "news",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/livewweb/docs/favico/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/livewweb/docs/favico/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/livewweb/docs/favico/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
