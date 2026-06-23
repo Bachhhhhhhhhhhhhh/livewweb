@@ -21,6 +21,7 @@ import { t } from '@/services/i18n';
 import { escapeHtml } from '@/utils/sanitize';
 import { isDesktopRuntime } from '@/services/runtime';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
+import { getSiteDisplayName } from '@/config/site-branding';
 
 
 function getLocalizedPanelName(panelKey: string, fallback: string): string {
@@ -38,7 +39,7 @@ export function initSettingsWindow(): void {
   if (!appEl) return;
 
   // This window shows only "which panels to display" (panel display settings).
-  document.title = `${t('header.settings')} - World Monitor`;
+  document.title = `${t('header.settings')} - ${getSiteDisplayName()}`;
 
   const panelSettings = loadFromStorage<Record<string, PanelConfig>>(
     STORAGE_KEYS.panels,

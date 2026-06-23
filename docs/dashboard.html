@@ -15,6 +15,25 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https: http://localhost:5173 ws: wss: blob: data: https://abacus.worldmonitor.app https://*.ingest.sentry.io https://*.ingest.us.sentry.io; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'sha256-+SFBjfmi2XfnyAT3POBxf6JIKYDcNXtllPclOcaNBI0=' 'sha256-6/G1DIYD+8O8W74aigTCCcrDGW7+I/md1IgQnJ8ABXM=' 'sha256-7oZNrsyfSuHAVU4KcnfCYgflzMCUu6NcFnN8paFIf0A=' 'sha256-903UI9my1I7mqHoiVeZSc56yd50YoRJTB2269QqL76w=' 'sha256-DrjY0lH4SfvhYZefrLUSxCtdmRIT6YhNzXnq1l4PhgM=' 'sha256-Du+OJKJSbdUgz5nrHeWWINvez6XKDDU/tyj/5c2uvwo=' 'sha256-LAdItzAgekgQQLah6zECmAdxwThaBCXzADV6Px2hstA=' 'sha256-NDA7EpfjL/yP8vyFF5aJF7DRvsJO89X0MlSd7yfVkzU=' 'sha256-X3TTz80miIiit6P8R5dsphOutHMYVOQXRUXATNVKsAg=' 'sha256-XoZ2GX3HVyjaUGNkwyjzgpGsQ/crwmHBcf4R8zR1RB4=' 'sha256-XsSfnJeoJYzlhuBF8lmmhxzSpSgSecVttS4CzI5UqnM=' 'sha256-Y1di1iyV4O3x8mz3QuMZ1/KbbBYyIC3VCp85zutIyKg=' 'sha256-ZimHqIaRVsXHzs9742Lvc/LQq4wXTTIlgjDoXmsJKFE=' 'sha256-kPCvUR9alMLCC5mPPYZzjkGVooMo2ODuFxcv7Gz4j5Y=' 'sha256-rYGdQCwA8VlzwKCDSrVSZX/qm7P9rxn7F/BrbPUm+go=' 'sha256-tVTD7NdqnF80qbLAWi+afYhexjeXML1r9u1St/hT5cM=' 'wasm-unsafe-eval' https://www.youtube.com https://static.cloudflareinsights.com https://vercel.live https://challenges.cloudflare.com https://abacus.worldmonitor.app https://*.clerk.accounts.dev https://clerk.worldmonitor.app https://*.dodopayments.com https://js.stripe.com; worker-src 'self' blob:; font-src 'self' data: https:; media-src 'self' data: blob: https: http://127.0.0.1:* http://localhost:*; frame-src 'self' http://127.0.0.1:* http://localhost:* https://www.worldmonitor.app https://worldmonitor.app https://tech.worldmonitor.app https://finance.worldmonitor.app https://commodity.worldmonitor.app https://happy.worldmonitor.app https://energy.worldmonitor.app https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://webcams.windy.com https://challenges.cloudflare.com https://vercel.live https://*.vercel.app https://*.clerk.accounts.dev https://clerk.worldmonitor.app https://*.dodopayments.com https://pay.google.com https://hooks.stripe.com https://js.stripe.com;" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
+    <script>
+      (function () {
+        if (!location.hostname.endsWith('.github.io')) return;
+        var brand = 'The Vision of World';
+        var title = brand + ' \u2014 Real-Time Global Intelligence Dashboard';
+        document.title = title;
+        function setMeta(name, content, useProperty) {
+          var sel = useProperty ? 'meta[property="' + name + '"]' : 'meta[name="' + name + '"]';
+          var el = document.querySelector(sel);
+          if (el) el.setAttribute('content', content);
+        }
+        setMeta('title', title, false);
+        setMeta('application-name', brand, false);
+        setMeta('og:title', title, true);
+        setMeta('og:site_name', brand, true);
+        setMeta('twitter:title', title, false);
+      })();
+    </script>
+
     <!-- Primary Meta Tags -->
     <title>World Monitor - Real-Time Global Intelligence Dashboard</title>
     <meta name="title" content="World Monitor - Real-Time Global Intelligence Dashboard" />
@@ -63,7 +82,7 @@
     <meta property="og:image" content="https://www.worldmonitor.app/favico/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="World Monitor 窶・real-time global intelligence dashboard with 3D globe, live markets, geopolitical data, and infrastructure monitoring" />
+    <meta property="og:image:alt" content="The Vision of World — real-time global intelligence dashboard with 3D globe, live markets, geopolitical data, and infrastructure monitoring" />
     <meta property="og:site_name" content="World Monitor" />
     <meta property="og:locale" content="en_US" />
 
@@ -81,8 +100,8 @@
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "World Monitor",
-      "alternateName": ["WorldMonitor", "World Monitor App", "WM Intelligence"],
+      "name": "The Vision of World",
+      "alternateName": ["TheVisionOfWorld", "Vision of World"],
       "url": "https://www.worldmonitor.app/dashboard",
       "description": "Open-source real-time global intelligence dashboard aggregating conflicts, military movements, markets, infrastructure, and geopolitical data. Used by 2M+ people across 190+ countries. Featured in WIRED.",
       "applicationCategory": "SecurityApplication",
@@ -126,9 +145,9 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "World Monitor",
-      "alternateName": "WorldMonitor",
-      "url": "https://www.worldmonitor.app/",
+      "name": "The Vision of World",
+      "alternateName": "TheVisionOfWorld",
+      "url": "https://bachhhhhhhhhhhhhh.github.io/livewweb/",
       "logo": "https://www.worldmonitor.app/favico/apple-touch-icon.png",
       "description": "Open-source real-time global intelligence platform aggregating conflicts, military movements, markets, infrastructure, and geopolitical data. Used by 2M+ people across 190+ countries.",
       "founder": {
@@ -156,14 +175,14 @@
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      "name": "World Monitor",
-      "alternateName": "WorldMonitor",
-      "url": "https://www.worldmonitor.app/",
+      "name": "The Vision of World",
+      "alternateName": "TheVisionOfWorld",
+      "url": "https://bachhhhhhhhhhhhhh.github.io/livewweb/",
       "description": "Real-time global intelligence dashboard 窶・live news, markets, military tracking, infrastructure monitoring, and geopolitical data.",
       "publisher": {
         "@type": "Organization",
-        "name": "World Monitor",
-        "url": "https://www.worldmonitor.app/"
+        "name": "The Vision of World",
+        "url": "https://bachhhhhhhhhhhhhh.github.io/livewweb/"
       },
       "potentialAction": {
         "@type": "SearchAction",
@@ -288,15 +307,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/livewweb/docs/assets/main-DBmD3PjM.js"></script>
+    <script type="module" crossorigin src="/livewweb/docs/assets/main-Cjpu1UpF.js"></script>
     <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/modulepreload-polyfill-B5Qt9EMX.js">
     <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/d3-DE1H7FhT.js">
     <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/i18n-qlunRAMb.js">
-    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/panels-B5TQJCh1.js">
-    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/embed-url-DfYpvHTT.js">
-    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/settings-persistence-BhnXkB5E.js">
-    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/checkout-BZXjk2VE.js">
-    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/user-location-DoBxCE_9.js">
+    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/panels-DgLmQ4s4.js">
+    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/embed-url-0CCsEtkd.js">
+    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/settings-persistence-oeVD-_gz.js">
+    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/user-location-B6-X9YRy.js">
+    <link rel="modulepreload" crossorigin href="/livewweb/docs/assets/checkout-BNuZJw_O.js">
     <link rel="stylesheet" crossorigin href="/livewweb/docs/assets/embed-url-Bfrn_9W7.css">
     <link rel="stylesheet" crossorigin href="/livewweb/docs/assets/settings-persistence-CCxf_ZvB.css">
   </head>
@@ -314,7 +333,7 @@
       links until this switch.
     -->
     <div id="seo-prerender" lang="en">
-      <h1>World Monitor 窶・Real-Time Global Intelligence Dashboard</h1>
+      <h1>The Vision of World — Real-Time Global Intelligence Dashboard</h1>
       <p>Free, open-source intelligence platform aggregating live news, markets, military movements, conflicts, and infrastructure into one real-time dashboard. Used by 2M+ people across 190+ countries. <a href="https://www.wired.me/story/the-music-streaming-ceo-who-built-a-global-war-map">Featured in WIRED</a>.</p>
 
       <h2>What it tracks</h2>
@@ -386,7 +405,7 @@
     </aside>
     <noscript>
       <div style="max-width:800px;margin:0 auto;padding:40px 20px;font-family:system-ui,sans-serif;color:#e5e5e5;background:#0a0a0a;">
-        <h2>World Monitor 窶・Real-Time Global Intelligence Dashboard</h2>
+        <h2>The Vision of World — Real-Time Global Intelligence Dashboard</h2>
         <p>AI-powered real-time global intelligence dashboard with live news, markets, military tracking, infrastructure monitoring, and geopolitical data. Used by 2M+ people across 190+ countries. <a href="https://www.wired.me/story/the-music-streaming-ceo-who-built-a-global-war-map" style="color:#4ade80;" rel="noopener noreferrer">Featured in WIRED</a>.</p>
 
         <p>The platform combines real-time conflict events from <a href="https://acleddata.com/" style="color:#4ade80;" rel="noopener noreferrer">ACLED</a> and <a href="https://ucdp.uu.se/" style="color:#4ade80;" rel="noopener noreferrer">UCDP</a>, satellite fire detection from <a href="https://firms.modaps.eosdis.nasa.gov/" style="color:#4ade80;" rel="noopener noreferrer">NASA FIRMS</a>, earthquakes from <a href="https://earthquake.usgs.gov/" style="color:#4ade80;" rel="noopener noreferrer">USGS</a>, aircraft tracking from <a href="https://opensky-network.org/" style="color:#4ade80;" rel="noopener noreferrer">OpenSky</a>, ship AIS from <a href="https://aisstream.io/" style="color:#4ade80;" rel="noopener noreferrer">AISStream</a>, and macro data from <a href="https://fred.stlouisfed.org/" style="color:#4ade80;" rel="noopener noreferrer">FRED</a>, <a href="https://www.imf.org/en/Data" style="color:#4ade80;" rel="noopener noreferrer">IMF</a>, and <a href="https://www.bis.org/" style="color:#4ade80;" rel="noopener noreferrer">BIS</a>.</p>

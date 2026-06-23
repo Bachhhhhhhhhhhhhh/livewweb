@@ -110,6 +110,7 @@ import {
 } from '@/config';
 import { resolveNewsCategories, enabledNewsCategoryKeys } from '@/config/feed-resolution';
 import { BETA_MODE } from '@/config/beta';
+import { getSiteDisplayName, getSiteLogoShort, getSiteNameUpper } from '@/config/site-branding';
 import { t } from '@/services/i18n';
 import { getCurrentTheme } from '@/utils';
 import { trackCriticalBannerAction } from '@/services/analytics';
@@ -562,7 +563,7 @@ export class PanelLayoutManager implements AppModule {
               <span class="variant-label">Good News</span>
             </a>`;
       })()}</div>
-          <span class="logo">MONITOR</span><span class="logo-mobile">World Monitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
+          <span class="logo">${getSiteLogoShort()}</span><span class="logo-mobile">${getSiteDisplayName()}</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
           <a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener" class="credit-link" title="Brian Bach Truong — Data Analyst, Honda">
             <span class="credit-text">Brian Bach Truong</span>
           </a>
@@ -606,7 +607,7 @@ export class PanelLayoutManager implements AppModule {
       <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
       <nav class="mobile-menu" id="mobileMenu">
         <div class="mobile-menu-header">
-          <span class="mobile-menu-title">WORLD MONITOR</span>
+          <span class="mobile-menu-title">${getSiteNameUpper()}</span>
           <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -715,14 +716,14 @@ export class PanelLayoutManager implements AppModule {
         <div class="site-footer-brand">
           <img src="${withBase('/favico/favicon-32x32.png')}" alt="" width="28" height="28" class="site-footer-icon" />
           <div class="site-footer-brand-text">
-            <span class="site-footer-name">WORLD MONITOR</span>
+            <span class="site-footer-name">${getSiteNameUpper()}</span>
             <span class="site-footer-sub">v${__APP_VERSION__} &middot; <a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener" class="site-footer-credit">Brian Bach Truong &middot; Data Analyst, Honda</a></span>
           </div>
         </div>
         <nav>
           <a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener">LinkedIn</a>
         </nav>
-        <span class="site-footer-copy">&copy; ${new Date().getFullYear()} World Monitor</span>
+        <span class="site-footer-copy">&copy; ${new Date().getFullYear()} ${getSiteDisplayName()}</span>
       </footer>
     `, "legacy direct innerHTML migration"));
 
