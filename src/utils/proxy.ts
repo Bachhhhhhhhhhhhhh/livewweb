@@ -1,4 +1,5 @@
 import { isDesktopRuntime, toApiUrl, toRuntimeUrl } from '../services/runtime';
+import { isStaticWebMirror } from '../services/static-mirror';
 import { getPersistentCache, setPersistentCache } from '../services/persistent-cache';
 
 const isDev = import.meta.env.DEV;
@@ -33,8 +34,9 @@ export function widgetAgentHealthUrl(): string {
 
 export function rssProxyUrl(feedUrl: string): string {
   if (isDesktopRuntime()) return proxyUrl(feedUrl);
-  if (RSS_PROXY_BASE) {
-    return `${RSS_PROXY_BASE}/rss?url=${encodeURIComponent(feedUrl)}`;
+  const relayBase = RSS_PROXY_BASE || (isStaticWebMirror() ? 'https://proxy.worldmonitor.app' : '');
+  if (relayBase) {
+    return `${relayBase}/rss?url=${encodeURIComponent(feedUrl)}`;
   }
   return `/api/rss-proxy?url=${encodeURIComponent(feedUrl)}`;
 }

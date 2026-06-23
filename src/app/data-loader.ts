@@ -135,6 +135,8 @@ import { buildResilienceChoroplethMap } from '@/components/resilience-choropleth
 import { enrichEventsWithExposure } from '@/services/population-exposure';
 import { debounce, getCircuitBreakerCooldownInfo } from '@/utils';
 import { isFeatureAvailable, isFeatureEnabled } from '@/services/runtime-config';
+import { loadBakedFeedDigest } from '@/services/live-seed-digest';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { hasPremiumAccess } from '@/services/panel-gating';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
 import { getAiFlowSettings } from '@/services/ai-flow-settings';
@@ -393,8 +395,24 @@ export class DataLoaderManager implements AppModule {
     this.refreshCiiAndBrief(false);
   }
 
+  applyBakedDigest(digest: ListFeedDigestResponse): void {
+    this.lastGoodDigest = digest;
+    this.persistDigest(digest);
+    this.digestBreaker = { state: 'closed', failures: 0, cooldownUntil: 0 };
+  }
+
   private async tryFetchDigest(): Promise<ListFeedDigestResponse | null> {
     const now = Date.now();
+
+    if (isStaticWebMirror()) {
+      const baked = await loadBakedFeedDigest(SITE_VARIANT, getCurrentLanguage());
+      if (baked) {
+        const catCount = Object.keys(baked.categories ?? {}).length;
+        console.info(`[News] Baked digest loaded: ${catCount} categories`);
+        this.applyBakedDigest(baked);
+        return baked;
+      }
+    }
 
     if (this.digestBreaker.state === 'open') {
       if (now < this.digestBreaker.cooldownUntil) {
@@ -445,6 +463,8 @@ export class DataLoaderManager implements AppModule {
     // Desktop: server digest has fewer categories than client FEEDS config.
     // Enable per-feed RSS fallback so missing categories fetch directly.
     if (isDesktopRuntime()) return true;
+    // GitHub Pages: API digest blocked — refresh headlines via proxy.worldmonitor.app RSS.
+    if (isStaticWebMirror()) return true;
     return isFeatureEnabled('newsPerFeedFallback');
   }
 

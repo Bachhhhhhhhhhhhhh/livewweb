@@ -39,6 +39,7 @@ jobs:
           GITHUB_PAGES: '1'
           VITE_STATIC_MIRROR: '1'
           VITE_UNLOCK_ALL: '1'
+          VITE_RSS_DIRECT_TO_RELAY: '1'
           VITE_WS_API_URL: ${{ vars.LIVEWWEB_API_URL || 'https://livewweb.vercel.app' }}
           PROXY_TO_UPSTREAM_API: '1'
 
@@ -64,6 +65,7 @@ jobs:
           test -f dist/dashboard.html
           test -f dist/live-seed/bootstrap-fast.json
           test -f dist/live-seed/bootstrap-slow.json
+          test -f dist/live-seed/feed-digest-full-en.json
           node <<'NODE'
           import { readFileSync, existsSync } from 'node:fs';
           import { join } from 'node:path';

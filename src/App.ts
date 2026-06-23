@@ -78,11 +78,12 @@ import { hasPremiumAccess } from '@/services/panel-gating';
 import { BETA_MODE } from '@/config/beta';
 import { trackEvent, trackDeeplinkOpened, initAuthAnalytics } from '@/services/analytics';
 import { preloadCountryGeometry, getCountryNameByCode } from '@/services/country-geometry';
-import { initI18n, t } from '@/services/i18n';
+import { initI18n, t, getCurrentLanguage } from '@/services/i18n';
 
 import { computeDefaultDisabledSources, getLocaleBoostedSources, getTotalFeedCount, FEEDS, INTEL_SOURCES } from '@/config/feeds';
 import { selectSourcesUnderCap, findFullyDisabledCategories } from '@/services/source-cap';
 import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, startLiveSeedPolling, type BootstrapHydrationState } from '@/services/bootstrap';
+import { startLiveDigestPolling } from '@/services/live-seed-digest';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
 import { isStaticWebMirror } from '@/services/static-mirror';
 import { describeFreshness } from '@/services/persistent-cache';
@@ -1108,6 +1109,10 @@ export class App {
     await fetchBootstrapData();
     this.bootstrapHydrationState = getBootstrapHydrationState();
     startLiveSeedPolling();
+    startLiveDigestPolling(SITE_VARIANT, getCurrentLanguage(), (digest) => {
+      this.dataLoader.applyBakedDigest(digest);
+      void this.dataLoader.loadNews();
+    });
 
     // Verify OAuth OTT and hydrate auth session BEFORE any UI subscribes to auth state
     await initAuthState();
