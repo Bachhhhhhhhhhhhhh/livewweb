@@ -5,6 +5,7 @@ import { isStaticWebMirror } from '@/services/static-mirror';
 const FORK_EXTRA_PANEL_KEYS = [
   'regional-intelligence',
   'deduction',
+  'chat-analyst',
   'climate-news',
   'macro-tiles',
   'economic-calendar',
@@ -14,6 +15,11 @@ const FORK_EXTRA_PANEL_KEYS = [
   'geo-hubs',
   'cot-positioning',
   'yield-curve',
+  'stock-analysis',
+  'trade-policy',
+  'market-implications',
+  'wsb-ticker-scanner',
+  'daily-market-brief',
 ] as const;
 
 /** Cloud-only panels hidden on static mirror. */

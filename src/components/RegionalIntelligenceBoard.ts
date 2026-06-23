@@ -101,9 +101,13 @@ export class RegionalIntelligenceBoard extends Panel {
 
     replaceChildren(this.content, h('div', { className: 'rib-shell' }, controls, this.body));
 
-    this.renderLoading();
     this.lastHadPremium = hasPremiumAccess();
-    void this.loadCurrent();
+    if (isStaticWebMirror()) {
+      void this.loadStaticFirst();
+    } else {
+      this.renderLoading();
+      void this.loadCurrent();
+    }
 
     // Re-fire loadCurrent on false→true entitlement transitions (user signs
     // in / purchases PRO mid-session). Without this, a user whose Clerk
@@ -145,6 +149,17 @@ export class RegionalIntelligenceBoard extends Panel {
     super.destroy();
   }
 
+  /** GitHub Pages: paint baked regional view immediately, then try live RPC in background. */
+  private async loadStaticFirst(): Promise<void> {
+    const html = await buildStaticRegionalHtml(this.currentRegion);
+    if (html) {
+      setTrustedHtml(this.body, trustedHtml(html, 'legacy direct innerHTML migration'));
+    } else {
+      this.renderLoading();
+    }
+    void this.loadCurrent();
+  }
+
   private async loadCurrent(): Promise<void> {
     // Skip premium RPCs when this app instance is running inside the /pro
     // marketing page's live-preview iframe — no Clerk session carries across
@@ -173,7 +188,9 @@ export class RegionalIntelligenceBoard extends Panel {
     this.latestSequence += 1;
     const mySequence = this.latestSequence;
     const myRegion = this.currentRegion;
-    this.renderLoading();
+    if (!isStaticWebMirror() || !this.body.querySelector('.rib-static-fallback')) {
+      this.renderLoading();
+    }
 
     // Phase 1: render the snapshot immediately — never blocked by Phase 3
     // enrichments. History + brief fire in parallel but don't gate the

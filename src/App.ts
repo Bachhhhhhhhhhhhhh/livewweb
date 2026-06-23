@@ -61,6 +61,7 @@ import type { FuelShortagePanel } from '@/components/FuelShortagePanel';
 import type { EnergyDisruptionsPanel } from '@/components/EnergyDisruptionsPanel';
 import type { EnergyRiskOverviewPanel } from '@/components/EnergyRiskOverviewPanel';
 import type { ChokepointStripPanel } from '@/components/ChokepointStripPanel';
+import type { WsbTickerScannerPanel } from '@/components/WsbTickerScannerPanel';
 import type { ClimateNewsPanel } from '@/components/ClimateNewsPanel';
 import type { ConsumerPricesPanel } from '@/components/ConsumerPricesPanel';
 import type { DefensePatentsPanel } from '@/components/DefensePatentsPanel';
@@ -89,6 +90,7 @@ import { FORK_HOT_REFRESH_MS } from '@/config/fork-refresh';
 import { invalidateServerInsightsCache } from '@/services/insights-loader';
 import { isStaticWebMirror, shouldShowAuthUi } from '@/services/static-mirror';
 import { deferStaticMirrorIdleWork, shouldRunHealthFreshnessRefresh } from '@/services/static-mirror-performance';
+import { shouldPrimeForkPanel } from '@/services/fork-panel-prime';
 import { applyForkPanelBoost, tuneMapLayersForStaticMirror } from '@/config/fork-defaults';
 import { resolveShellDocumentTitle } from '@/config/site-branding';
 
@@ -380,8 +382,10 @@ export class App {
       tasks.push(wrapped);
     };
 
-    const shouldPrime = (id: string): boolean => forceAll || this.isPanelNearViewport(id);
-    const shouldPrimeAny = (ids: string[]): boolean => forceAll || this.isAnyPanelNearViewport(ids);
+    const shouldPrime = (id: string): boolean =>
+      shouldPrimeForkPanel(id, this.state.panelSettings, this.isPanelNearViewport(id), forceAll);
+    const shouldPrimeAny = (ids: string[]): boolean =>
+      forceAll || ids.some((id) => shouldPrime(id));
 
     if (shouldPrime('service-status')) {
       const panel = this.state.panels['service-status'] as ServiceStatusPanel | undefined;
@@ -567,6 +571,10 @@ export class App {
       }
       if (shouldPrime('market-implications')) {
         primeTask('marketImplications', () => this.dataLoader.loadMarketImplications());
+      }
+      if (shouldPrime('wsb-ticker-scanner')) {
+        const panel = this.state.panels['wsb-ticker-scanner'] as WsbTickerScannerPanel | undefined;
+        if (panel) primeTask('wsb-ticker-scanner', () => panel.fetchData());
       }
     }
 

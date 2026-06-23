@@ -1,4 +1,5 @@
 import type { MarketServiceClient } from '@/generated/client/worldmonitor/market/v1/service_client';
+import { fetchBootstrapKeys } from '@/services/bootstrap';
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
@@ -76,6 +77,13 @@ export class CotPositioningPanel extends Panel {
   public async fetchData(): Promise<boolean> {
     this.showLoading();
     try {
+      const boot = await fetchBootstrapKeys('cotPositioning', { timeoutMs: 6_000 });
+      const seeded = boot.data?.cotPositioning as { instruments?: CotInstrumentData[]; reportDate?: string; unavailable?: boolean } | undefined;
+      if (seeded?.instruments?.length) {
+        this._hasData = true;
+        this.render(seeded.instruments, seeded.reportDate ?? '');
+      }
+
       const client = await getMarketClient();
       const resp = await client.getCotPositioning({});
       if (resp.unavailable || !resp.instruments || resp.instruments.length === 0) {

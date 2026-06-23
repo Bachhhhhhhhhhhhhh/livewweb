@@ -1,3 +1,4 @@
+import { isForkUnlockAll } from '@/config/fork-unlock';
 import { isDesktopRuntime } from '../services/runtime';
 import { invokeTauri } from '../services/tauri-bridge';
 import { t } from '../services/i18n';
@@ -263,7 +264,7 @@ export class Panel {
       headerLeft.appendChild(this.newBadgeEl);
     }
 
-    if (options.premium && !getSecretState('WORLDMONITOR_API_KEY').present) {
+    if (options.premium && !getSecretState('WORLDMONITOR_API_KEY').present && !isForkUnlockAll()) {
       const proBadge = h('span', { className: 'panel-pro-badge' }, t('premium.pro'));
       headerLeft.appendChild(proBadge);
     }

@@ -12,6 +12,7 @@ UNLOCK_ALL = "1"
 
 # AI chat: wrangler secret put GROQ_API_KEY
 # Optional: wrangler secret put GROQ_MODEL (default llama-3.1-8b-instant)
+# Premium RPC unlock: wrangler secret put WORLDMONITOR_API_KEY
 
 [observability]
 enabled = true

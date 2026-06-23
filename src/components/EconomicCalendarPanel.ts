@@ -1,4 +1,5 @@
 import type { EconomicServiceClient } from '@/generated/client/worldmonitor/economic/v1/service_client';
+import { fetchBootstrapKeys } from '@/services/bootstrap';
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
@@ -105,6 +106,14 @@ export class EconomicCalendarPanel extends Panel {
   public async fetchData(): Promise<boolean> {
     this.showLoading('Loading economic calendar...');
     try {
+      const boot = await fetchBootstrapKeys('econCalendar', { timeoutMs: 6_000 });
+      const seeded = boot.data?.econCalendar as { events?: EconomicEvent[]; unavailable?: boolean } | undefined;
+      if (seeded?.events?.length) {
+        this._events = seeded.events;
+        this._hasData = true;
+        this._render();
+      }
+
       const client = await getEconomicClient();
       const today = new Date();
       const fromDate = today.toISOString().slice(0, 10);

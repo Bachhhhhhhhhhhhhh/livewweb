@@ -57,7 +57,7 @@ async function ensureSession() {
   return cachedCookie;
 }
 
-async function proxyUpstream(request, pathname, cors) {
+async function proxyUpstream(request, pathname, cors, env) {
   const cookie = await ensureSession();
   const src = new URL(request.url);
   const target = `${UPSTREAM}${pathname}${src.search}`;
@@ -67,7 +67,10 @@ async function proxyUpstream(request, pathname, cors) {
   if (cookie) headers.set('Cookie', cookie);
   const auth = request.headers.get('Authorization');
   if (auth) headers.set('Authorization', auth);
-  const wmKey = request.headers.get('X-WorldMonitor-Key') ?? request.headers.get('X-Api-Key');
+  let wmKey = request.headers.get('X-WorldMonitor-Key') ?? request.headers.get('X-Api-Key');
+  if (!wmKey && env.WORLDMONITOR_API_KEY) {
+    wmKey = env.WORLDMONITOR_API_KEY;
+  }
   if (wmKey) headers.set('X-WorldMonitor-Key', wmKey);
   const ct = request.headers.get('content-type');
   if (ct) headers.set('Content-Type', ct);
@@ -229,7 +232,7 @@ export default {
     }
 
     if (pathname.startsWith('/api/')) {
-      return proxyUpstream(request, pathname, corsHeaders(origin));
+      return proxyUpstream(request, pathname, corsHeaders(origin), env);
     }
 
     return new Response(JSON.stringify({ error: 'Not found' }), {

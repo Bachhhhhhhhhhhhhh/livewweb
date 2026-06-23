@@ -44,11 +44,21 @@ async function loadDigestItems(): Promise<DigestItem[]> {
 }
 
 async function loadInsights(): Promise<ServerInsights | null> {
-  const raw = await readBootstrapKey('insights');
-  if (!raw || typeof raw !== 'object') return null;
-  const data = raw as ServerInsights;
-  if (!Array.isArray(data.topStories) || data.topStories.length === 0) return null;
-  return data;
+  const cached = await readBootstrapKey('insights');
+  if (cached && typeof cached === 'object') {
+    const data = cached as ServerInsights;
+    if (Array.isArray(data.topStories) && data.topStories.length > 0) return data;
+  }
+  if (isStaticWebMirror()) {
+    const { fetchBootstrapKeys } = await import('@/services/bootstrap');
+    const payload = await fetchBootstrapKeys('insights', { timeoutMs: 8_000 });
+    const raw = payload.data?.insights;
+    if (raw && typeof raw === 'object') {
+      const data = raw as ServerInsights;
+      if (Array.isArray(data.topStories) && data.topStories.length > 0) return data;
+    }
+  }
+  return null;
 }
 
 function tokenize(text: string): string[] {
@@ -187,7 +197,7 @@ export async function buildStaticRegionalHtml(regionId: string): Promise<string 
       <p class="rib-static-brief">${escape(brief)}</p>
       <h4>Top stories in region</h4>
       ${rows || '<p class="rib-static-meta">No region-tagged stories in the current seed.</p>'}
-      <p class="rib-static-note">Full regional intelligence board requires a live Pro API key. This fallback uses the GitHub Pages intelligence seed.</p>
+      <p class="rib-static-note">Live regional board updates when the API proxy is available. Showing intelligence seed snapshot.</p>
     </div>`;
 }
 
