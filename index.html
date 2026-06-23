@@ -7,7 +7,7 @@
         var p = location.pathname;
         if (p.indexOf('/docs/') !== -1) return;
         var base = p.replace(/\/?index\.html$/, '').replace(/\/$/, '') || '';
-        location.replace(base + '/docs/dashboard.html' + location.search + location.hash);
+        location.replace(base + '/site/dashboard.html' + location.search + location.hash);
       })();
     </script>
     <meta charset="UTF-8" />
