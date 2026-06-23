@@ -1,9 +1,11 @@
 {
-  "fetchedAt": "2026-06-23T03:24:31.182Z",
+  "fetchedAt": "2026-06-23T03:35:55.399Z",
   "upstream": "https://api.worldmonitor.app",
   "fast": {
-    "keys": 26,
-    "missing": []
+    "keys": 25,
+    "missing": [
+      "temporalAnomalies"
+    ]
   },
   "slow": {
     "keys": 80,

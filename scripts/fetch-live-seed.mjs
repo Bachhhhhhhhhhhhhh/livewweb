@@ -4,14 +4,17 @@
  * Bakes realtime seed into GitHub Pages so panels hydrate on first load
  * even when the Vercel API backend is not yet configured.
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, cp, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const UPSTREAM = (process.env.UPSTREAM_API_URL || 'https://api.worldmonitor.app').replace(/\/$/, '');
 const ORIGIN = process.env.UPSTREAM_ORIGIN_HEADER || 'https://worldmonitor.app';
 const UA = 'Mozilla/5.0 (compatible; WorldMonitor-CI-Seed/2.8)';
-const OUT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'live-seed');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const OUT_DIR = path.join(ROOT, 'public', 'live-seed');
+const FALLBACK_DIR = path.join(ROOT, 'docs', 'live-seed');
 const DIGEST_VARIANTS = (process.env.LIVE_SEED_DIGEST_VARIANTS || 'full,tech,finance,world,happy,energy,commodity').split(',');
 const DIGEST_LANGS = (process.env.LIVE_SEED_DIGEST_LANGS || 'en,vi').split(',');
 
@@ -117,7 +120,19 @@ async function main() {
   console.log(`[live-seed] Wrote ${manifest.fast.keys} fast + ${manifest.slow.keys} slow keys, ${digestStats.length} digests → public/live-seed/`);
 }
 
-main().catch((err) => {
+async function copyFallbackSeed() {
+  await access(path.join(FALLBACK_DIR, 'bootstrap-fast.json'), constants.R_OK);
+  await mkdir(OUT_DIR, { recursive: true });
+  await cp(FALLBACK_DIR, OUT_DIR, { recursive: true, force: true });
+  console.warn('[live-seed] Upstream fetch failed — using docs/live-seed fallback');
+}
+
+main().catch(async (err) => {
   console.error('[live-seed] FAILED:', err.message);
-  process.exit(1);
+  try {
+    await copyFallbackSeed();
+  } catch (fallbackErr) {
+    console.error('[live-seed] Fallback also failed:', fallbackErr.message);
+    process.exit(1);
+  }
 });
