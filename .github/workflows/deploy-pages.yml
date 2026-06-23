@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'site/**'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -91,18 +91,21 @@ jobs:
           console.log('Asset integrity check passed');
           NODE
 
-      - name: Publish built site to site/
+      - name: Publish built site to docs/
         run: |
-          rm -rf site
-          cp -r dist site
+          cp -r docs/api /tmp/docs-api-backup
+          rm -rf docs
+          cp -r dist docs
+          cp -r /tmp/docs-api-backup docs/api
+          rm -rf /tmp/docs-api-backup
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site
-          git diff --staged --quiet && echo "site unchanged" && exit 0
+          git add docs
+          git diff --staged --quiet && echo "docs unchanged" && exit 0
           git commit -m "deploy: GitHub Pages static build [skip ci]"
           git push
 
-      - name: Point GitHub Pages at main/site
+      - name: Point GitHub Pages at main/docs
         run: |
           code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
             -X PUT \
@@ -110,7 +113,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${{ github.repository }}/pages" \
-            -d '{"build_type":"legacy","source":{"branch":"main","path":"/site"}}')
+            -d '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}')
           echo "Pages configure HTTP $code"
           cat /tmp/pages.json
 

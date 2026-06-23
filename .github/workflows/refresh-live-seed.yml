@@ -30,14 +30,13 @@ jobs:
           npm ci --ignore-scripts
           node scripts/fetch-live-seed.mjs
 
-      - name: Update site/live-seed on main
+      - name: Update docs/live-seed on main
         run: |
-          mkdir -p site
-          rm -rf site/live-seed
-          cp -r public/live-seed site/live-seed
+          rm -rf docs/live-seed
+          cp -r public/live-seed docs/live-seed
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/live-seed
+          git add docs/live-seed
           git diff --staged --quiet && echo "live-seed unchanged" && exit 0
           git commit -m "chore: refresh live-seed $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
           git push
