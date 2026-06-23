@@ -2,11 +2,16 @@ name = "livewweb-proxy"
 main = "src/index.js"
 compatibility_date = "2025-05-01"
 
+# Production URL: https://livewweb-proxy.<account-subdomain>.workers.dev
+# Baked into GitHub Pages via VITE_WS_API_URL (package.json build:pages).
+# Deploy: add CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID to GitHub repo secrets
+#         → workflow deploy-livewweb-proxy.yml runs on push.
+
 [vars]
 UNLOCK_ALL = "1"
 
-# Set GROQ_API_KEY in Cloudflare dashboard or via `wrangler secret put GROQ_API_KEY`
-# Required for /api/chat-analyst AI streaming on GitHub Pages.
+# AI chat: wrangler secret put GROQ_API_KEY
+# Optional: wrangler secret put GROQ_MODEL (default llama-3.1-8b-instant)
 
 [observability]
 enabled = true

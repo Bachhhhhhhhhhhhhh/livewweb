@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const BASE = 'https://bachhhhhhhhhhhhhh.github.io';
+const API_PROXY = process.env.FORK_API_URL || 'https://livewweb-proxy.invincible-legend.workers.dev';
 
 async function head(path) {
   const res = await fetch(BASE + path, { method: 'HEAD' });
@@ -46,3 +47,24 @@ for (const u of uniq) {
 }
 console.log('asset refs', uniq.length, 'missing', missing.length);
 for (const m of missing.slice(0, 15)) console.log('MISSING', m);
+
+console.log('\n=== live API proxy ===');
+try {
+  const health = await fetch(`${API_PROXY}/api/health`, {
+    headers: { Origin: 'https://bachhhhhhhhhhhhhh.github.io' },
+  });
+  const body = await health.text();
+  console.log('health', health.status, body.slice(0, 120));
+  const boot = await fetch(`${API_PROXY}/api/bootstrap?tier=fast`, {
+    headers: { Origin: 'https://bachhhhhhhhhhhhhh.github.io' },
+  });
+  console.log('bootstrap', boot.status, 'bytes', (await boot.text()).length);
+} catch (e) {
+  console.error('API proxy check failed:', e.message);
+}
+
+if (main) {
+  const jsRes = await get(`/livewweb/docs/assets/${main}`);
+  const hasApi = jsRes.body.includes('livewweb-proxy') || jsRes.body.includes('VITE_WS_API');
+  console.log('bundle has API proxy ref:', hasApi);
+}

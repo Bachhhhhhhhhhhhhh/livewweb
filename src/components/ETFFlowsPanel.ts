@@ -5,7 +5,7 @@ import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { MarketServiceClient } from '@/generated/client/worldmonitor/market/v1/service_client';
 import type { ListEtfFlowsResponse } from '@/generated/client/worldmonitor/market/v1/service_client';
 import { resolvePanelBootstrap } from '@/services/bootstrap';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { hasStaticMirrorLiveApi, isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
 
 type ETFFlowsResult = ListEtfFlowsResponse;
 
@@ -43,10 +43,10 @@ export class ETFFlowsPanel extends Panel {
       this.error = null;
       this.loading = false;
       this.renderPanel();
-      if (!isStaticWebMirror()) void this.refreshFromRpc();
+      if (shouldUseLiveApiFetch()) void this.refreshFromRpc();
       return;
     }
-    if (isStaticWebMirror()) {
+    if (isStaticWebMirror() && !hasStaticMirrorLiveApi()) {
       this.error = t('components.etfFlows.unavailable');
       this.loading = false;
       this.renderPanel();

@@ -2,7 +2,7 @@ import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { fetchBootstrapKeys, resolvePanelBootstrap } from '@/services/bootstrap';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 
 interface WeekData {
   date: string;
@@ -139,7 +139,7 @@ export class AAIISentimentPanel extends Panel {
     if (hydrated?.latest) {
       this.data = hydrated;
       this.renderPanel();
-      if (!isStaticWebMirror()) {
+      if (shouldUseLiveApiFetch()) {
         try {
           const { data } = await fetchBootstrapKeys('aaiiSentiment');
           if (data.aaiiSentiment && (data.aaiiSentiment as AAIIData).latest) {

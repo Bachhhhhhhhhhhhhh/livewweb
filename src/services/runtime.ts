@@ -494,6 +494,8 @@ const ALLOWED_REDIRECT_HOST_PATTERNS = [
   /^https:\/\/([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*worldmonitor\.app(:\d+)?$/,
   // Self-hosted Vercel API for this fork (GitHub Pages static mirror)
   /^https:\/\/livewweb(-[a-z0-9-]+)?\.vercel\.app$/,
+  // Cloudflare Worker live API proxy for GitHub Pages
+  /^https:\/\/livewweb-proxy\.[a-z0-9-]+\.workers\.dev$/,
 ];
 
 function isAllowedRedirectTarget(url: string): boolean {

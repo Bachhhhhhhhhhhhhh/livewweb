@@ -2,7 +2,7 @@ import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { joinSafeHtml, safeHtml, safeUrlAttr, type SafeHtml } from '@/utils/sanitize';
 import { resolvePanelBootstrap } from '@/services/bootstrap';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { hasStaticMirrorLiveApi, isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { getRpcBaseUrl } from '@/services/rpc-client';
 import { ClimateServiceClient } from '@/generated/client/worldmonitor/climate/v1/service_client';
 import type { ListClimateNewsResponse, ClimateNewsItem } from '@/generated/client/worldmonitor/climate/v1/service_client';
@@ -54,7 +54,7 @@ export class ClimateNewsPanel extends Panel {
       if (hydrated?.items?.length) {
         if (!this.element?.isConnected) return;
         this.renderNewsList(hydrated);
-        if (!isStaticWebMirror()) {
+        if (shouldUseLiveApiFetch()) {
           void client.listClimateNews({}).then(data => {
             if (!this.element?.isConnected || !data.items?.length) return;
             this.renderNewsList(data);
@@ -63,7 +63,7 @@ export class ClimateNewsPanel extends Panel {
         return;
       }
 
-      if (isStaticWebMirror()) {
+      if (isStaticWebMirror() && !hasStaticMirrorLiveApi()) {
         if (!this.element?.isConnected) return;
         this.showError(t('components.climateNews.loadError'), () => void this.fetchData());
         return;

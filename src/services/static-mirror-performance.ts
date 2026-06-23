@@ -1,4 +1,4 @@
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { hasStaticMirrorLiveApi, isStaticWebMirror } from '@/services/static-mirror';
 
 /** Scale background refresh intervals on GitHub Pages to reduce network/CPU churn. */
 export function getStaticMirrorRefreshMultiplier(): number {
@@ -20,9 +20,9 @@ export function getStaticMirrorPerFeedBatchSize(defaultBatchSize: number): numbe
   return isStaticWebMirror() ? 1 : defaultBatchSize;
 }
 
-/** /api/health is unavailable on GitHub Pages — skip polling it. */
+/** Skip /api/health polling only when no live API proxy is configured. */
 export function shouldRunHealthFreshnessRefresh(): boolean {
-  return !isStaticWebMirror();
+  return !isStaticWebMirror() || hasStaticMirrorLiveApi();
 }
 
 /** Defer heavy preload work until the browser is idle (faster first paint on static mirror). */
