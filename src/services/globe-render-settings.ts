@@ -1,4 +1,5 @@
 import { withBase } from '@/utils/app-base';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 export type GlobeRenderScale = 'auto' | '1' | '1.5' | '2' | '3';
 export type GlobeTexture = 'topographic' | 'blue-marble';
@@ -31,7 +32,7 @@ export function getGlobeRenderScale(): GlobeRenderScale {
   } catch {
     // ignore
   }
-  return 'auto';
+  return isStaticWebMirror() ? '1' : 'auto';
 }
 
 export function setGlobeRenderScale(scale: GlobeRenderScale): void {

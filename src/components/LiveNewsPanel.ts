@@ -13,6 +13,7 @@ import { escapeHtml, sanitizeUrl } from '@/utils/sanitize';
 
 import { getStreamQuality } from '@/services/ai-flow-settings';
 import { getLiveStreamsAlwaysOn, subscribeLiveStreamsSettingsChange } from '@/services/live-stream-settings';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { track } from '@/services/analytics';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 
@@ -430,7 +431,8 @@ export class LiveNewsPanel extends Panel {
     this.createChannelSwitcher();
     this.setupBridgeMessageListener();
     this.renderPlaceholder();
-    this.setupLazyInit();
+    // GitHub Pages: load player only on user click to avoid iframe CPU on first paint.
+    if (!isStaticWebMirror()) this.setupLazyInit();
     this.setupIdleDetection();
     this.unsubscribeStreamSettings = subscribeLiveStreamsSettingsChange((alwaysOn) => {
       this.alwaysOn = alwaysOn;

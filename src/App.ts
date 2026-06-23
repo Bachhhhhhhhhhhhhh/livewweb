@@ -86,6 +86,7 @@ import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, st
 import { startLiveDigestPolling } from '@/services/live-seed-digest';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
 import { isStaticWebMirror } from '@/services/static-mirror';
+
 import { describeFreshness } from '@/services/persistent-cache';
 import { DesktopUpdater } from '@/app/desktop-updater';
 import { CountryIntelManager } from '@/app/country-intel';
@@ -1100,7 +1101,7 @@ export class App {
     // wms_-prefixed HMAC token before the first API call. Desktop has its own
     // API key path and doesn't need this; Clerk-authenticated users will pass
     // their JWT in a Bearer header and the interceptor steps aside.
-    if (!isDesktopRuntime()) {
+    if (!isDesktopRuntime() && !isStaticWebMirror()) {
       installWmSessionFetchInterceptor();
       await ensureWmSession();
     }

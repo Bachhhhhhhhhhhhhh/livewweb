@@ -137,6 +137,10 @@ import { debounce, getCircuitBreakerCooldownInfo } from '@/utils';
 import { isFeatureAvailable, isFeatureEnabled } from '@/services/runtime-config';
 import { loadBakedFeedDigest } from '@/services/live-seed-digest';
 import { isStaticWebMirror } from '@/services/static-mirror';
+import {
+  getStaticMirrorNewsCategoryConcurrency,
+  getStaticMirrorPerFeedBatchSize,
+} from '@/services/static-mirror-performance';
 import { hasPremiumAccess } from '@/services/panel-gating';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
 import { getAiFlowSettings } from '@/services/ai-flow-settings';
@@ -311,16 +315,37 @@ export class DataLoaderManager implements AppModule {
   private readonly persistedDigestMaxAgeMs = 6 * 60 * 60 * 1000;
   private readonly perFeedFallbackCategoryFeedLimit = 3;
   private readonly perFeedFallbackIntelFeedLimit = 6;
+  private readonly staticMirrorCategoryFeedLimit = 2;
+  private readonly staticMirrorIntelFeedLimit = 3;
   private readonly perFeedFallbackBatchSize = 2;
+  private readonly staticMirrorDigestMinCategories = 8;
 
   private getPerFeedCategoryLimit(isCustom: boolean): number {
-    if (isCustom || isStaticWebMirror()) return Number.POSITIVE_INFINITY;
+    if (isCustom) return Number.POSITIVE_INFINITY;
+    if (isStaticWebMirror()) return this.staticMirrorCategoryFeedLimit;
     return this.perFeedFallbackCategoryFeedLimit;
   }
 
   private getPerFeedIntelLimit(): number {
-    if (isStaticWebMirror()) return Number.POSITIVE_INFINITY;
+    if (isStaticWebMirror()) return this.staticMirrorIntelFeedLimit;
     return this.perFeedFallbackIntelFeedLimit;
+  }
+
+  private getPerFeedFallbackBatchSize(): number {
+    return getStaticMirrorPerFeedBatchSize(this.perFeedFallbackBatchSize);
+  }
+
+  private bakedDigestCategoryCount(digest?: ListFeedDigestResponse | null): number {
+    return digest?.categories ? Object.keys(digest.categories).length : 0;
+  }
+
+  private shouldTrustBakedDigestCategory(
+    digest: ListFeedDigestResponse | null | undefined,
+    category: string,
+    isCustom: boolean,
+  ): boolean {
+    if (isCustom || !isStaticWebMirror() || !digest?.categories) return false;
+    return category in digest.categories;
   }
   private lastGoodDigest: ListFeedDigestResponse | null = null;
 
@@ -469,12 +494,15 @@ export class DataLoaderManager implements AppModule {
     } catch { return null; }
   }
 
-  private isPerFeedFallbackEnabled(): boolean {
+  private isPerFeedFallbackEnabled(digest?: ListFeedDigestResponse | null): boolean {
     // Desktop: server digest has fewer categories than client FEEDS config.
     // Enable per-feed RSS fallback so missing categories fetch directly.
     if (isDesktopRuntime()) return true;
-    // GitHub Pages: API digest blocked — refresh headlines via proxy.worldmonitor.app RSS.
-    if (isStaticWebMirror()) return true;
+    // GitHub Pages: prefer baked digest; only hit RSS relay when the seed is thin.
+    if (isStaticWebMirror()) {
+      const catCount = this.bakedDigestCategoryCount(digest ?? this.lastGoodDigest);
+      return catCount < this.staticMirrorDigestMinCategories;
+    }
     return isFeatureEnabled('newsPerFeedFallback');
   }
 
@@ -1001,7 +1029,11 @@ export class DataLoaderManager implements AppModule {
           .map(protoItemToNewsItem)
           .filter(i => enabledNames.has(i.source));
 
-        if (digestItems.length > 0 || (!this.isPerFeedFallbackEnabled() && !isCustom)) {
+        if (
+          digestItems.length > 0
+          || (!this.isPerFeedFallbackEnabled(digest) && !isCustom)
+          || this.shouldTrustBakedDigestCategory(digest, category, isCustom)
+        ) {
           ingestHeadlines(digestItems.map(i => ({ title: i.title, pubDate: i.pubDate, source: i.source, link: i.link })));
           checkBatchForBreakingAlerts(digestItems);
           this.flashMapForNews(digestItems);
@@ -1084,7 +1116,7 @@ export class DataLoaderManager implements AppModule {
       // (every preset category fetching at once). It does NOT apply to custom
       // categories: those are NEVER in the digest by design — direct fetch is
       // their only path, and there are only a handful of them per user.
-      if (!isCustom && !this.isPerFeedFallbackEnabled() && !options.allowDigestPendingFallback) {
+      if (!isCustom && !this.isPerFeedFallbackEnabled(digest) && !options.allowDigestPendingFallback) {
         console.warn(`[News] Digest missing for "${category}", limited per-feed fallback disabled`);
         this.renderNewsForCategory(category, []);
         this.ctx.statusPanel?.updateFeed(category.charAt(0).toUpperCase() + category.slice(1), {
@@ -1108,7 +1140,7 @@ export class DataLoaderManager implements AppModule {
       }
 
       const items = await fetchCategoryFeeds(fallbackFeeds, {
-        batchSize: this.perFeedFallbackBatchSize,
+        batchSize: this.getPerFeedFallbackBatchSize(),
         onBatch: (partialItems) => {
           scheduleRender(partialItems);
           this.flashMapForNews(partialItems);
@@ -1180,7 +1212,7 @@ export class DataLoaderManager implements AppModule {
         .map(protoItemToNewsItem)
         .filter(i => enabledIntelNames.has(i.source));
 
-      if (intel.length > 0 || !this.isPerFeedFallbackEnabled()) {
+      if (intel.length > 0 || !this.isPerFeedFallbackEnabled(digest) || this.shouldTrustBakedDigestCategory(digest, 'intel', false)) {
         checkBatchForBreakingAlerts(intel);
         this.renderNewsForCategory('intel', intel);
         if (intelPanel && options.recordBaselineSample) {
@@ -1213,7 +1245,7 @@ export class DataLoaderManager implements AppModule {
       return staleIntel;
     }
 
-    if (!this.isPerFeedFallbackEnabled() && !allowDigestPendingFallback) {
+    if (!this.isPerFeedFallbackEnabled(digest) && !allowDigestPendingFallback) {
       console.warn('[News] Intel digest missing, limited per-feed fallback disabled');
       delete this.ctx.newsByCategory['intel'];
       this.ctx.statusPanel?.updateFeed('Intel', { status: 'error', errorMessage: 'Digest unavailable' });
@@ -1229,7 +1261,7 @@ export class DataLoaderManager implements AppModule {
 
     let intel: NewsItem[];
     try {
-      intel = await fetchCategoryFeeds(fallbackIntelFeeds, { batchSize: this.perFeedFallbackBatchSize });
+      intel = await fetchCategoryFeeds(fallbackIntelFeeds, { batchSize: this.getPerFeedFallbackBatchSize() });
     } catch (e) {
       delete this.ctx.newsByCategory['intel'];
       console.error('[App] Intel feed failed:', e);
@@ -1275,7 +1307,9 @@ export class DataLoaderManager implements AppModule {
       enabledNewsCategoryKeys(this.ctx.newsPanels, this.ctx.panels, this.ctx.panelSettings),
     );
 
-    const maxCategoryConcurrency = SITE_VARIANT === 'tech' ? 4 : 5;
+    const maxCategoryConcurrency = getStaticMirrorNewsCategoryConcurrency(
+      SITE_VARIANT === 'tech' ? 4 : 5,
+    );
     const categoryConcurrency = Math.max(1, Math.min(maxCategoryConcurrency, categories.length));
     const newsPass = await runNewsLoadPass(
       {
@@ -1284,7 +1318,7 @@ export class DataLoaderManager implements AppModule {
         digestPromise,
         fallbackDigest,
         digestGraceMs: this.digestFirstPaintGraceMs,
-        allowPendingPerFeedFallback: this.isPerFeedFallbackEnabled(),
+        allowPendingPerFeedFallback: this.isPerFeedFallbackEnabled(fallbackDigest),
         hasDigestCategory: (digest, key) => Boolean(digest.categories && key in digest.categories),
         loadCategory: ({ key, feeds, isCustom }, digest, options) => this.loadNewsCategory(key, feeds, digest, isCustom, options),
         loadIntel: SITE_VARIANT === 'full'

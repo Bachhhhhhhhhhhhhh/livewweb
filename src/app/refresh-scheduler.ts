@@ -1,5 +1,6 @@
 import type { AppContext, AppModule } from '@/app/app-context';
 import { startSmartPollLoop, VisibilityHub, type SmartPollLoopHandle } from '@/services/runtime';
+import { scaleRefreshIntervalMs } from '@/services/static-mirror-performance';
 
 export interface RefreshRegistration {
   name: string;
@@ -63,7 +64,7 @@ export class RefreshScheduler implements AppModule {
         this.ctx.inFlight.delete(name);
       }
     }, {
-      intervalMs,
+      intervalMs: scaleRefreshIntervalMs(intervalMs),
       pauseWhenHidden: true,
       refreshOnVisible: false,
       runImmediately: options.runImmediately ?? false,
@@ -74,7 +75,7 @@ export class RefreshScheduler implements AppModule {
       },
     });
 
-    this.refreshRunners.set(name, { loop, intervalMs });
+    this.refreshRunners.set(name, { loop, intervalMs: scaleRefreshIntervalMs(intervalMs) });
   }
 
   flushStaleRefreshes(): void {

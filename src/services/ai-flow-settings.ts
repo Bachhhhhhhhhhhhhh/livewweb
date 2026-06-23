@@ -7,6 +7,7 @@
  */
 
 import { isDesktopRuntime } from './runtime';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 const STORAGE_KEY_BROWSER_MODEL = 'wm-ai-flow-browser-model';
 const STORAGE_KEY_CLOUD_LLM = 'wm-ai-flow-cloud-llm';
@@ -59,11 +60,15 @@ const DEFAULTS: AiFlowSettings = {
   badgeAnimation: false,
 };
 
+function staticMirrorMapNewsFlashDefault(): boolean {
+  return isStaticWebMirror() ? false : DEFAULTS.mapNewsFlash;
+}
+
 export function getAiFlowSettings(): AiFlowSettings {
   return {
     browserModel: readBool(STORAGE_KEY_BROWSER_MODEL, DEFAULTS.browserModel),
     cloudLlm: readBool(STORAGE_KEY_CLOUD_LLM, DEFAULTS.cloudLlm),
-    mapNewsFlash: readBool(STORAGE_KEY_MAP_NEWS_FLASH, DEFAULTS.mapNewsFlash),
+    mapNewsFlash: readBool(STORAGE_KEY_MAP_NEWS_FLASH, staticMirrorMapNewsFlashDefault()),
     headlineMemory: readBool(STORAGE_KEY_HEADLINE_MEMORY, DEFAULTS.headlineMemory),
     badgeAnimation: readBool(STORAGE_KEY_BADGE_ANIMATION, DEFAULTS.badgeAnimation),
   };
@@ -128,7 +133,7 @@ export function getStreamQuality(): StreamQuality {
     const raw = localStorage.getItem(STORAGE_KEY_STREAM_QUALITY);
     if (raw && ['auto', 'small', 'medium', 'large', 'hd720'].includes(raw)) return raw as StreamQuality;
   } catch { /* ignore */ }
-  return 'auto';
+  return isStaticWebMirror() ? 'medium' : 'auto';
 }
 
 export function setStreamQuality(quality: StreamQuality): void {
