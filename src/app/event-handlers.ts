@@ -50,7 +50,7 @@ import { VARIANT_META } from '@/config/variant-meta';
 import { getSiteDisplayName } from '@/config/site-branding';
 import { isDesktopRuntime } from '@/services/runtime';
 import {
-  MISSION_PRESETS,
+  getVisibleMissionPresets,
   applyMissionPresetToState,
   clearMissionPreset,
   dismissMissionPresetPrompt,
@@ -770,7 +770,7 @@ export class EventHandlerManager implements AppModule {
     popover.setAttribute('aria-label', 'Mission presets');
     popover.tabIndex = -1;
 
-    const cards = MISSION_PRESETS.map((preset) => {
+    const cards = getVisibleMissionPresets().map((preset) => {
       const selected = active?.id === preset.id;
       return `
         <button

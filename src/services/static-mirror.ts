@@ -16,6 +16,11 @@ export function shouldShowAuthUi(): boolean {
   return !isStaticWebMirror();
 }
 
+/** Hide Good News / happy variant on the GitHub Pages fork. */
+export function shouldShowHappyVariant(): boolean {
+  return !isStaticWebMirror();
+}
+
 /** True when the static mirror build has a live API proxy (VITE_WS_API_URL). */
 export function hasStaticMirrorLiveApi(): boolean {
   return isStaticWebMirror() && (import.meta.env.VITE_WS_API_URL?.length ?? 0) > 0;

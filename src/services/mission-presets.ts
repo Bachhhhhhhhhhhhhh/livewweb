@@ -7,6 +7,7 @@ import {
   getEffectivePanelConfig,
 } from '@/config/panels';
 import { SITE_VARIANT } from '@/config/variant';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { isLayerExecutable, sanitizeLayersForVariant } from '@/config/map-layer-definitions';
 import type { MapRenderer, MapVariant } from '@/config/map-layer-definitions';
 
@@ -346,12 +347,27 @@ const withMapPanel = (panels: string[]): string[] => {
 
 export function getMissionPreset(id: string | null | undefined): MissionPreset | null {
   if (!id) return null;
-  return MISSION_PRESETS.find((preset) => preset.id === id) ?? null;
+  const preset = MISSION_PRESETS.find((p) => p.id === id) ?? null;
+  if (preset?.id === 'good-news-explorer' && isStaticWebMirror()) return null;
+  return preset;
+}
+
+/** Mission presets shown in the UI (Good News excluded on GitHub Pages fork). */
+export function getVisibleMissionPresets(): readonly MissionPreset[] {
+  if (isStaticWebMirror()) {
+    return MISSION_PRESETS.filter((p) => p.id !== 'good-news-explorer');
+  }
+  return MISSION_PRESETS;
 }
 
 export function loadStoredMissionPreset(): MissionPreset | null {
   try {
-    return getMissionPreset(localStorage.getItem(MISSION_PRESET_STORAGE_KEY));
+    const stored = localStorage.getItem(MISSION_PRESET_STORAGE_KEY);
+    if (stored === 'good-news-explorer' && isStaticWebMirror()) {
+      localStorage.removeItem(MISSION_PRESET_STORAGE_KEY);
+      return null;
+    }
+    return getMissionPreset(stored);
   } catch {
     return null;
   }

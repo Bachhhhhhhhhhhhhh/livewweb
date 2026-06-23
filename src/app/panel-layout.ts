@@ -115,7 +115,7 @@ import { t } from '@/services/i18n';
 import { getCurrentTheme } from '@/utils';
 import { trackCriticalBannerAction } from '@/services/analytics';
 import { getEffectiveMapModePreference } from '@/services/map-mode-preference';
-import { shouldShowAuthUi } from '@/services/static-mirror';
+import { shouldShowAuthUi, shouldShowHappyVariant } from '@/services/static-mirror';
 import { CustomWidgetPanel } from '@/components/CustomWidgetPanel';
 import { openWidgetChatModal } from '@/components/WidgetChatModal';
 import { loadWidgets, saveWidget, isProUser } from '@/services/widget-store';
@@ -554,7 +554,7 @@ export class PanelLayoutManager implements AppModule {
               <span class="variant-icon">⚡</span>
               <span class="variant-label">${t('header.energy')}</span>
             </a>
-            <span class="variant-divider"></span>
+            ${shouldShowHappyVariant() ? `<span class="variant-divider"></span>
             <a href="${vHref('happy', 'https://happy.worldmonitor.app')}"
                class="variant-option ${SITE_VARIANT === 'happy' ? 'active' : ''}"
                data-variant="happy"
@@ -562,7 +562,7 @@ export class PanelLayoutManager implements AppModule {
                title="Good News${SITE_VARIANT === 'happy' ? ` ${t('common.currentVariant')}` : ''}">
               <span class="variant-icon">☀️</span>
               <span class="variant-label">Good News</span>
-            </a>`;
+            </a>` : ''}`;
       })()}</div>
           <span class="logo">${getSiteLogoShort()}</span><span class="logo-mobile">${getSiteDisplayName()}</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
           <a href="https://www.linkedin.com/in/bachtruong123/" target="_blank" rel="noopener" class="credit-link" title="Brian Bach Truong — Data Analyst, Honda">
@@ -621,7 +621,7 @@ export class PanelLayoutManager implements AppModule {
           { key: 'finance', icon: '📈', label: t('header.finance') },
           { key: 'commodity', icon: '⛏️', label: t('header.commodity') },
           { key: 'energy', icon: '⚡', label: t('header.energy') },
-          { key: 'happy', icon: '☀️', label: 'Good News' },
+          ...(shouldShowHappyVariant() ? [{ key: 'happy', icon: '☀️', label: 'Good News' }] : []),
         ];
         return variants.map(v =>
           `<button class="mobile-menu-item mobile-menu-variant ${v.key === SITE_VARIANT ? 'active' : ''}" data-variant="${v.key}">
