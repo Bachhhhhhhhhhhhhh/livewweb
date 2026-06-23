@@ -64,7 +64,7 @@ export class RefreshScheduler implements AppModule {
         this.ctx.inFlight.delete(name);
       }
     }, {
-      intervalMs: scaleRefreshIntervalMs(intervalMs),
+      intervalMs: scaleRefreshIntervalMs(intervalMs, name),
       pauseWhenHidden: true,
       refreshOnVisible: false,
       runImmediately: options.runImmediately ?? false,
@@ -75,7 +75,7 @@ export class RefreshScheduler implements AppModule {
       },
     });
 
-    this.refreshRunners.set(name, { loop, intervalMs: scaleRefreshIntervalMs(intervalMs) });
+    this.refreshRunners.set(name, { loop, intervalMs: scaleRefreshIntervalMs(intervalMs, name) });
   }
 
   flushStaleRefreshes(): void {

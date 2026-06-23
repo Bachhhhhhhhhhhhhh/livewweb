@@ -1,5 +1,7 @@
 import type { ListFeedDigestResponse } from '@/generated/client/worldmonitor/news/v1/service_client';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { getForkRefreshIntervalMs } from '@/config/fork-refresh';
+import { isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
+import { toApiUrl } from '@/services/runtime';
 import { withBase } from '@/utils/app-base';
 
 const POLL_MS = 5 * 60 * 1000;
@@ -87,6 +89,21 @@ async function loadMergedBakedDigest(variant: string, lang: string): Promise<Lis
   return loadedAny && Object.keys(merged.categories ?? {}).length > 0 ? merged : null;
 }
 
+async function fetchLiveFeedDigest(variant: string, lang: string): Promise<ListFeedDigestResponse | null> {
+  if (!shouldUseLiveApiFetch()) return null;
+  try {
+    const resp = await fetch(
+      toApiUrl(`/api/news/v1/list-feed-digest?variant=${variant}&lang=${lang}`),
+      { cache: 'no-cache', signal: AbortSignal.timeout(12_000) },
+    );
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as ListFeedDigestResponse;
+    return data.categories && Object.keys(data.categories).length > 0 ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 /** CI-baked news digest for GitHub Pages (API CORS blocked on *.github.io). */
 export async function loadBakedFeedDigest(
   variant: string,
@@ -107,7 +124,7 @@ export async function loadBakedFeedDigest(
   return null;
 }
 
-/** Re-fetch CI-refreshed digest files (cron updates docs/live-seed/). */
+/** Hot-refresh news digest every 5 min (live API proxy or CI-refreshed /live-seed/). */
 export function startLiveDigestPolling(
   variant: string,
   lang: string,
@@ -116,11 +133,16 @@ export function startLiveDigestPolling(
   if (!isStaticWebMirror() || pollTimer) return;
 
   const refresh = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     cache.delete(cacheKey(variant, lang));
-    const digest = await loadBakedFeedDigest(variant, lang);
+    let digest = await fetchLiveFeedDigest(variant, lang);
+    if (!digest) {
+      digest = await loadBakedFeedDigest(variant, lang);
+    }
     if (digest) onUpdate?.(digest);
   };
 
+  const intervalMs = getForkRefreshIntervalMs('digest', POLL_MS);
   // Defer first refresh — loadAllData() already hydrates news on boot.
-  pollTimer = setInterval(() => { void refresh(); }, POLL_MS);
+  pollTimer = setInterval(() => { void refresh(); }, intervalMs);
 }

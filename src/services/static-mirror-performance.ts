@@ -1,23 +1,25 @@
+import { getForkRefreshIntervalMs } from '@/config/fork-refresh';
 import { hasStaticMirrorLiveApi, isStaticWebMirror } from '@/services/static-mirror';
 
-/** Scale background refresh intervals on GitHub Pages to reduce network/CPU churn. */
+/** No slowdown multiplier — fork uses explicit 5-minute hot refresh instead. */
 export function getStaticMirrorRefreshMultiplier(): number {
-  return isStaticWebMirror() ? 2 : 1;
+  return 1;
 }
 
-export function scaleRefreshIntervalMs(intervalMs: number): number {
-  const mult = getStaticMirrorRefreshMultiplier();
-  return mult === 1 ? intervalMs : Math.round(intervalMs * mult);
+export function scaleRefreshIntervalMs(intervalMs: number, task = 'default'): number {
+  return getForkRefreshIntervalMs(task, intervalMs);
 }
 
-/** Cap parallel RSS category loads on static mirrors (proxy relay is the bottleneck). */
+/** Parallel RSS loads — higher when live API proxy is available. */
 export function getStaticMirrorNewsCategoryConcurrency(defaultConcurrency: number): number {
   if (!isStaticWebMirror()) return defaultConcurrency;
-  return Math.min(1, defaultConcurrency);
+  if (hasStaticMirrorLiveApi()) return Math.min(3, defaultConcurrency);
+  return Math.min(2, defaultConcurrency);
 }
 
 export function getStaticMirrorPerFeedBatchSize(defaultBatchSize: number): number {
-  return isStaticWebMirror() ? 1 : defaultBatchSize;
+  if (!isStaticWebMirror()) return defaultBatchSize;
+  return hasStaticMirrorLiveApi() ? defaultBatchSize : 2;
 }
 
 /** Skip /api/health polling only when no live API proxy is configured. */

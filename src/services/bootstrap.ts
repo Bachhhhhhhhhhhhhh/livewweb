@@ -1,5 +1,6 @@
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
+import { getForkRefreshIntervalMs } from '@/config/fork-refresh';
 import { hasStaticMirrorLiveApi, isStaticWebMirror } from '@/services/static-mirror';
 import { withBase } from '@/utils/app-base';
 
@@ -294,12 +295,17 @@ export async function fetchBootstrapData(): Promise<void> {
 const LIVE_SEED_POLL_MS = 5 * 60 * 1000;
 let liveSeedPollTimer: ReturnType<typeof setInterval> | null = null;
 
-/** GitHub Pages: re-hydrate from CI-refreshed /live-seed/ without a live API. */
-export function startLiveSeedPolling(): void {
+/** GitHub Pages: hot-refresh bootstrap every 5 min (live API or baked /live-seed/). */
+export function startLiveSeedPolling(onUpdate?: () => void): void {
   if (!isStaticWebMirror() || liveSeedPollTimer) return;
 
   const refresh = async () => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    if (hasStaticMirrorLiveApi()) {
+      await fetchBootstrapData();
+      onUpdate?.();
+      return;
+    }
     for (const tier of ['fast', 'slow'] as const) {
       const baked = await loadBakedSeedTier(tier);
       if (baked && Object.keys(baked).length > 0) {
@@ -313,8 +319,10 @@ export function startLiveSeedPolling(): void {
         };
       }
     }
+    onUpdate?.();
   };
 
+  const intervalMs = getForkRefreshIntervalMs('bootstrap', LIVE_SEED_POLL_MS);
   void refresh();
-  liveSeedPollTimer = setInterval(() => { void refresh(); }, LIVE_SEED_POLL_MS);
+  liveSeedPollTimer = setInterval(() => { void refresh(); }, intervalMs);
 }

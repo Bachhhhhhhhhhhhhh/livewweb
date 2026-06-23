@@ -136,7 +136,7 @@ import { enrichEventsWithExposure } from '@/services/population-exposure';
 import { debounce, getCircuitBreakerCooldownInfo } from '@/utils';
 import { isFeatureAvailable, isFeatureEnabled } from '@/services/runtime-config';
 import { loadBakedFeedDigest } from '@/services/live-seed-digest';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { hasStaticMirrorLiveApi, isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
 import {
   getStaticMirrorNewsCategoryConcurrency,
   getStaticMirrorPerFeedBatchSize,
@@ -319,17 +319,27 @@ export class DataLoaderManager implements AppModule {
   private readonly perFeedFallbackIntelFeedLimit = 6;
   private readonly staticMirrorCategoryFeedLimit = 2;
   private readonly staticMirrorIntelFeedLimit = 3;
+  private readonly staticMirrorLiveCategoryFeedLimit = 8;
+  private readonly staticMirrorLiveIntelFeedLimit = 10;
   private readonly perFeedFallbackBatchSize = 2;
   private readonly staticMirrorDigestMinCategories = 8;
 
   private getPerFeedCategoryLimit(isCustom: boolean): number {
     if (isCustom) return Number.POSITIVE_INFINITY;
-    if (isStaticWebMirror()) return this.staticMirrorCategoryFeedLimit;
+    if (isStaticWebMirror()) {
+      return hasStaticMirrorLiveApi()
+        ? this.staticMirrorLiveCategoryFeedLimit
+        : this.staticMirrorCategoryFeedLimit;
+    }
     return this.perFeedFallbackCategoryFeedLimit;
   }
 
   private getPerFeedIntelLimit(): number {
-    if (isStaticWebMirror()) return this.staticMirrorIntelFeedLimit;
+    if (isStaticWebMirror()) {
+      return hasStaticMirrorLiveApi()
+        ? this.staticMirrorLiveIntelFeedLimit
+        : this.staticMirrorIntelFeedLimit;
+    }
     return this.perFeedFallbackIntelFeedLimit;
   }
 
@@ -441,6 +451,37 @@ export class DataLoaderManager implements AppModule {
   private async tryFetchDigest(): Promise<ListFeedDigestResponse | null> {
     const now = Date.now();
 
+    if (shouldUseLiveApiFetch()) {
+      if (this.digestBreaker.state === 'open') {
+        if (now < this.digestBreaker.cooldownUntil) {
+          return this.lastGoodDigest ?? await this.loadPersistedDigest();
+        }
+        this.digestBreaker.state = 'half-open';
+      }
+
+      try {
+        const resp = await fetch(
+          toApiUrl(`/api/news/v1/list-feed-digest?variant=${SITE_VARIANT}&lang=${getCurrentLanguage()}`),
+          { cache: 'no-cache', signal: AbortSignal.timeout(this.digestRequestTimeoutMs) },
+        );
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json() as ListFeedDigestResponse;
+        const catCount = Object.keys(data.categories ?? {}).length;
+        console.info(`[News] Live digest fetched: ${catCount} categories`);
+        this.lastGoodDigest = data;
+        this.persistDigest(data);
+        this.digestBreaker = { state: 'closed', failures: 0, cooldownUntil: 0 };
+        return data;
+      } catch (e) {
+        console.warn('[News] Live digest fetch failed, using fallback:', e);
+        this.digestBreaker.failures++;
+        if (this.digestBreaker.failures >= 2) {
+          this.digestBreaker.state = 'open';
+          this.digestBreaker.cooldownUntil = now + this.digestBreakerCooldownMs;
+        }
+      }
+    }
+
     if (isStaticWebMirror()) {
       const baked = await loadBakedFeedDigest(SITE_VARIANT, getCurrentLanguage());
       if (baked) {
@@ -449,6 +490,7 @@ export class DataLoaderManager implements AppModule {
         this.applyBakedDigest(baked);
         return baked;
       }
+      return this.lastGoodDigest ?? await this.loadPersistedDigest();
     }
 
     if (this.digestBreaker.state === 'open') {

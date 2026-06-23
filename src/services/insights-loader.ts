@@ -94,8 +94,15 @@ export function getServerInsights(): ServerInsights | null {
  * timeout, validation). Caches the value module-locally on success so
  * subsequent getServerInsights() calls return it without re-fetching.
  */
-export async function fetchServerInsights(timeoutMs = 5_000): Promise<ServerInsights | null> {
-  if (cached && isFresh(cached)) return cached;
+export function invalidateServerInsightsCache(): void {
+  cached = null;
+}
+
+export async function fetchServerInsights(
+  timeoutMs = 5_000,
+  options?: { force?: boolean },
+): Promise<ServerInsights | null> {
+  if (!options?.force && cached && isFresh(cached)) return cached;
   try {
     const { fetchBootstrapKeys } = await import('@/services/bootstrap');
     const payload = await fetchBootstrapKeys('insights', { timeoutMs });

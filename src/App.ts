@@ -38,7 +38,7 @@ import { startLearning } from '@/services/country-instability';
 import { loadFromStorage, parseMapUrlState, saveToStorage, isMobileDevice } from '@/utils';
 import { clearPanelSpans, invalidatePanelStorageCacheForKeys } from '@/utils/panel-storage';
 import type { ParsedMapUrlState } from '@/utils';
-import { SignalModal, IntelligenceGapBadge, BreakingNewsBanner } from '@/components';
+import { SignalModal, IntelligenceGapBadge, BreakingNewsBanner, InsightsPanel, ThreatTimelinePanel } from '@/components';
 import { initBreakingNewsAlerts, destroyBreakingNewsAlerts } from '@/services/breaking-news-alerts';
 import type { ServiceStatusPanel } from '@/components/ServiceStatusPanel';
 import type { StablecoinPanel } from '@/components/StablecoinPanel';
@@ -85,6 +85,8 @@ import { selectSourcesUnderCap, findFullyDisabledCategories } from '@/services/s
 import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, startLiveSeedPolling, type BootstrapHydrationState } from '@/services/bootstrap';
 import { startLiveDigestPolling } from '@/services/live-seed-digest';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
+import { FORK_HOT_REFRESH_MS } from '@/config/fork-refresh';
+import { invalidateServerInsightsCache } from '@/services/insights-loader';
 import { isStaticWebMirror, shouldShowAuthUi } from '@/services/static-mirror';
 import { deferStaticMirrorIdleWork, shouldRunHealthFreshnessRefresh } from '@/services/static-mirror-performance';
 import { applyForkPanelBoost, tuneMapLayersForStaticMirror } from '@/config/fork-defaults';
@@ -1129,7 +1131,7 @@ export class App {
     // Hydrate in-memory cache from bootstrap endpoint (before panels construct and fetch)
     await fetchBootstrapData();
     this.bootstrapHydrationState = getBootstrapHydrationState();
-    startLiveSeedPolling();
+    startLiveSeedPolling(() => { void this.refreshHotInsights(); });
     startLiveDigestPolling(SITE_VARIANT, getCurrentLanguage(), (digest) => {
       this.dataLoader.applyBakedDigest(digest);
       void this.dataLoader.loadNews();
@@ -1732,9 +1734,25 @@ export class App {
     }
   }
 
+  private async refreshHotInsights(): Promise<void> {
+    if (!isStaticWebMirror()) return;
+    invalidateServerInsightsCache();
+    const insightsPanel = this.state.panels['insights'] as InsightsPanel | undefined;
+    await insightsPanel?.updateInsights(this.state.latestClusters);
+    const threatTimelinePanel = this.state.panels['threat-timeline'] as ThreatTimelinePanel | undefined;
+    await threatTimelinePanel?.refresh(this.state.latestClusters);
+  }
+
   private setupRefreshIntervals(): void {
     // Always refresh news for all variants
     this.refreshScheduler.scheduleRefresh('news', () => this.dataLoader.loadNews(), REFRESH_INTERVALS.feeds);
+    if (isStaticWebMirror()) {
+      this.refreshScheduler.scheduleRefresh(
+        'insights',
+        () => this.refreshHotInsights(),
+        FORK_HOT_REFRESH_MS,
+      );
+    }
     if (shouldRunHealthFreshnessRefresh()) {
       this.refreshScheduler.scheduleRefresh(
         'health-freshness',
