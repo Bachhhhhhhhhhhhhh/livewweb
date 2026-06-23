@@ -26,7 +26,7 @@
     "sync:locales:check": "node scripts/sync-locale-keys.mjs --check",
     "docs:stats": "node scripts/docs-stats.mjs",
     "docs:check": "node scripts/docs-stats.mjs --check",
-    "dev": "cross-env VITE_UNLOCK_ALL=1 vite",
+    "dev": "cross-env VITE_UNLOCK_ALL=1 vite app.html",
     "dev:live": "cross-env VITE_UNLOCK_ALL=1 UNLOCK_ALL=1 PROXY_TO_UPSTREAM_API=1 vite --host --port 3000 --strictPort",
     "start:live": "node scripts/start-live.mjs",
     "build:vercel": "npm run build:openapi && npm run build:agent-skills && cross-env-shell VITE_UNLOCK_ALL=1 \"tsc && vite build\"",

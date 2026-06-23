@@ -226,10 +226,10 @@ function dashboardHtmlOutputPlugin(): Plugin {
     enforce: 'post',
     generateBundle(_options, bundle) {
       const dashboardEntry = Object.entries(bundle).find(([, output]) =>
-        output.type === 'asset' && output.fileName === 'index.html'
+        output.type === 'asset' && output.fileName === 'app.html'
       );
       if (!dashboardEntry) {
-        throw new Error('[vite] expected dashboard HTML entry index.html before renaming it to dashboard.html');
+        throw new Error('[vite] expected dashboard HTML entry app.html before renaming it to dashboard.html');
       }
 
       const [bundleKey, dashboardHtml] = dashboardEntry;
@@ -1114,7 +1114,7 @@ export default defineConfig(({ mode }) => {
           warn(warning);
         },
         input: {
-          main: resolve(__dirname, 'index.html'),
+          main: resolve(__dirname, 'app.html'),
           embed: resolve(__dirname, 'embed.html'),
           settings: resolve(__dirname, 'settings.html'),
           liveChannels: resolve(__dirname, 'live-channels.html'),

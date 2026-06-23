@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script>
+    (function () {
+      var m = location.pathname.match(/^(\/[^/]+)/);
+      var dest = (m ? m[1] : '') + '/docs/dashboard.html' + location.search + location.hash;
+      var meta = document.createElement('meta');
+      meta.httpEquiv = 'refresh';
+      meta.content = '0;url=' + dest;
+      document.head.appendChild(meta);
+      location.replace(dest);
+    })();
+  </script>
+  <title>World Monitor</title>
+</head>
+<body></body>
+</html>
