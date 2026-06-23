@@ -46,7 +46,6 @@ jobs:
       - name: Prepare GitHub Pages entrypoints
         run: |
           touch dist/.nojekyll
-          cp dist/dashboard.html dist/404.html
           printf '%s\n' \
             '<!DOCTYPE html>' \
             '<html lang="en">' \
@@ -59,6 +58,7 @@ jobs:
             '<body></body>' \
             '</html>' \
             > dist/index.html
+          cp dist/index.html dist/404.html
 
       - name: Verify build artifacts
         run: |
@@ -111,6 +111,8 @@ jobs:
 
       # Serve full repo (index.html redirects + docs/ production build).
       # Canonical dashboard: /livewweb/docs/dashboard.html
+      # Do NOT use actions/deploy-pages here — artifact deploy serves dist at
+      # /livewweb/ without /docs/, breaking /livewweb/docs/assets/ references.
       - name: Point GitHub Pages at repo root
         run: |
           code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
@@ -122,13 +124,3 @@ jobs:
             -d '{"build_type":"legacy","source":{"branch":"main","path":"/"}}')
           echo "Pages configure HTTP $code"
           cat /tmp/pages.json
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-      - uses: actions/deploy-pages@v4
-        id: deployment
-        continue-on-error: true
