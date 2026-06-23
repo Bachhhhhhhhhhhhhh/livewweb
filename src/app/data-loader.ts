@@ -310,7 +310,9 @@ export class DataLoaderManager implements AppModule {
 
   private digestBreaker = { state: 'closed' as 'closed' | 'open' | 'half-open', failures: 0, cooldownUntil: 0 };
   private readonly digestRequestTimeoutMs = 8000;
-  private readonly digestFirstPaintGraceMs = 1500;
+  private get digestFirstPaintGraceMs(): number {
+    return isStaticWebMirror() ? 0 : 1500;
+  }
   private readonly digestBreakerCooldownMs = 5 * 60 * 1000;
   private readonly persistedDigestMaxAgeMs = 6 * 60 * 60 * 1000;
   private readonly perFeedFallbackCategoryFeedLimit = 3;

@@ -86,6 +86,7 @@ import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, st
 import { startLiveDigestPolling } from '@/services/live-seed-digest';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
 import { isStaticWebMirror } from '@/services/static-mirror';
+import { deferStaticMirrorIdleWork, shouldRunHealthFreshnessRefresh } from '@/services/static-mirror-performance';
 import { resolveShellDocumentTitle } from '@/config/site-branding';
 
 import { describeFreshness } from '@/services/persistent-cache';
@@ -1353,7 +1354,11 @@ export class App {
 
     // Phase 6: Data loading
     this.dataLoader.syncDataFreshnessWithLayers();
-    await preloadCountryGeometry();
+    if (isStaticWebMirror()) {
+      deferStaticMirrorIdleWork(() => preloadCountryGeometry());
+    } else {
+      await preloadCountryGeometry();
+    }
     // Prime panel-specific data concurrently with bulk loading.
     // primeVisiblePanelData owns ETF, Stablecoins, Gulf Economies, etc. that
     // are NOT part of loadAllData. Running them in parallel prevents those
@@ -1701,13 +1706,15 @@ export class App {
   private setupRefreshIntervals(): void {
     // Always refresh news for all variants
     this.refreshScheduler.scheduleRefresh('news', () => this.dataLoader.loadNews(), REFRESH_INTERVALS.feeds);
-    this.refreshScheduler.scheduleRefresh(
-      'health-freshness',
-      async () => { await refreshDataFreshnessFromHealth(); },
-      REFRESH_INTERVALS.healthFreshness,
-      undefined,
-      { runImmediately: true },
-    );
+    if (shouldRunHealthFreshnessRefresh()) {
+      this.refreshScheduler.scheduleRefresh(
+        'health-freshness',
+        async () => { await refreshDataFreshnessFromHealth(); },
+        REFRESH_INTERVALS.healthFreshness,
+        undefined,
+        { runImmediately: true },
+      );
+    }
 
     // Happy variant only refreshes news -- skip all geopolitical/financial/military refreshes
     if (SITE_VARIANT !== 'happy') {

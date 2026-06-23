@@ -1,15 +1,13 @@
 {
-  "fetchedAt": "2026-06-23T04:23:33.083Z",
+  "fetchedAt": "2026-06-23T07:07:57.728Z",
   "upstream": "https://api.worldmonitor.app",
   "fast": {
     "keys": 26,
     "missing": []
   },
   "slow": {
-    "keys": 80,
-    "missing": [
-      "giving"
-    ]
+    "keys": 81,
+    "missing": []
   },
   "digests": [
     {
@@ -22,19 +20,19 @@
       "variant": "full",
       "lang": "vi",
       "categories": 16,
-      "items": 258
+      "items": 260
     },
     {
       "variant": "tech",
       "lang": "en",
       "categories": 19,
-      "items": 151
+      "items": 152
     },
     {
       "variant": "tech",
       "lang": "vi",
       "categories": 19,
-      "items": 151
+      "items": 152
     },
     {
       "variant": "finance",
@@ -52,49 +50,49 @@
       "variant": "world",
       "lang": "en",
       "categories": 16,
-      "items": 258
+      "items": 260
     },
     {
       "variant": "world",
       "lang": "vi",
       "categories": 16,
-      "items": 258
+      "items": 260
     },
     {
       "variant": "happy",
       "lang": "en",
       "categories": 5,
-      "items": 42
+      "items": 41
     },
     {
       "variant": "happy",
       "lang": "vi",
       "categories": 5,
-      "items": 42
+      "items": 41
     },
     {
       "variant": "energy",
       "lang": "en",
       "categories": 16,
-      "items": 258
+      "items": 260
     },
     {
       "variant": "energy",
       "lang": "vi",
       "categories": 16,
-      "items": 258
+      "items": 260
     },
     {
       "variant": "commodity",
       "lang": "en",
       "categories": 11,
-      "items": 194
+      "items": 196
     },
     {
       "variant": "commodity",
       "lang": "vi",
       "categories": 11,
-      "items": 194
+      "items": 196
     }
   ],
   "liveChannels": 17

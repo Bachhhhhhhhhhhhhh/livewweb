@@ -4,6 +4,7 @@ import { enqueueSentryCall, installPreInitErrorQueue, scheduleSentryInit } from 
 import { inject } from '@vercel/analytics';
 import { App } from './App';
 import { installUtmInterceptor } from './utils/utm';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 // perf G — defer @sentry/browser off the critical path (#3994).
 // The eager `Sentry.init({...})` previously ran here cost ~1.96 s of pre-LCP
@@ -12,7 +13,9 @@ import { installUtmInterceptor } from './utils/utm';
 // the actual SDK load via requestIdleCallback. The init options + SDK ship in
 // the deferred sentry-*.js chunk, not the main entry.
 installPreInitErrorQueue();
-scheduleSentryInit();
+if (!isStaticWebMirror()) {
+  scheduleSentryInit();
+}
 
 // Suppress NotAllowedError from YouTube IFrame API's internal play() — browser autoplay policy,
 // not actionable. The YT IFrame API doesn't expose the play() promise so it leaks as unhandled.
@@ -257,7 +260,7 @@ import { clearChunkReloadGuard, installChunkReloadGuard } from '@/bootstrap/chun
 import { installStaleBundleCheck } from '@/bootstrap/stale-bundle-check';
 import { installSwUpdateHandler } from '@/bootstrap/sw-update';
 import { withBase } from '@/utils/app-base';
-import { isStaticWebMirror, shouldRegisterServiceWorker } from '@/services/static-mirror';
+import { shouldRegisterServiceWorker } from '@/services/static-mirror';
 
 // Auto-reload on stale chunk 404s after deployment (Vite fires this for modulepreload failures).
 const chunkReloadStorageKey = installChunkReloadGuard(__APP_VERSION__);

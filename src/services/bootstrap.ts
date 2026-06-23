@@ -143,16 +143,25 @@ function combineHydrationSources(states: BootstrapTierHydrationState[]): Bootstr
   return 'mixed';
 }
 
+const bakedSeedTierCache = new Map<'fast' | 'slow', Record<string, unknown> | null>();
+
 /** CI-baked bootstrap seed shipped with GitHub Pages builds. */
 async function loadBakedSeedTier(tier: 'fast' | 'slow'): Promise<Record<string, unknown> | null> {
   if (!isStaticWebMirror()) return null;
+  if (bakedSeedTierCache.has(tier)) return bakedSeedTierCache.get(tier)!;
   try {
     const resp = await fetch(withBase(`/live-seed/bootstrap-${tier}.json`));
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      bakedSeedTierCache.set(tier, null);
+      return null;
+    }
     const payload = (await resp.json()) as { data?: Record<string, unknown> };
     const data = payload.data ?? {};
-    return Object.keys(data).length > 0 ? data : null;
+    const result = Object.keys(data).length > 0 ? data : null;
+    bakedSeedTierCache.set(tier, result);
+    return result;
   } catch {
+    bakedSeedTierCache.set(tier, null);
     return null;
   }
 }

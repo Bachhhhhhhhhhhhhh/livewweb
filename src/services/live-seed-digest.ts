@@ -4,6 +4,8 @@ import { withBase } from '@/utils/app-base';
 
 const POLL_MS = 5 * 60 * 1000;
 const DIGEST_VARIANTS = ['full', 'tech', 'finance', 'world', 'happy', 'energy', 'commodity'] as const;
+/** Below this count we merge all variant digests (custom panels may need cross-variant categories). */
+const MIN_CATEGORIES_BEFORE_MERGE = 8;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 const cache = new Map<string, ListFeedDigestResponse>();
 
@@ -13,6 +15,24 @@ function cacheKey(variant: string, lang: string): string {
 
 function categoryItemCount(categories: ListFeedDigestResponse['categories'], key: string): number {
   return categories?.[key]?.items?.length ?? 0;
+}
+
+function mergeDigestInto(
+  target: ListFeedDigestResponse,
+  source: ListFeedDigestResponse,
+): void {
+  if (!source.categories) return;
+  for (const [key, category] of Object.entries(source.categories)) {
+    const existing = categoryItemCount(target.categories, key);
+    const incoming = category?.items?.length ?? 0;
+    if (incoming > existing) {
+      target.categories![key] = category;
+    }
+  }
+  if (source.generatedAt && (!target.generatedAt || source.generatedAt > target.generatedAt)) {
+    target.generatedAt = source.generatedAt;
+  }
+  Object.assign(target.feedStatuses, source.feedStatuses ?? {});
 }
 
 async function fetchDigestFile(file: string): Promise<ListFeedDigestResponse | null> {
@@ -26,28 +46,41 @@ async function fetchDigestFile(file: string): Promise<ListFeedDigestResponse | n
   }
 }
 
-/** Merge all variant digests so custom panels (e.g. startups) hydrate on GitHub Pages. */
-async function loadMergedBakedDigest(lang: string): Promise<ListFeedDigestResponse | null> {
+/** Load a single variant digest (1–2 fetches vs 14 for full merge). */
+async function loadVariantBakedDigest(variant: string, lang: string): Promise<ListFeedDigestResponse | null> {
   const merged: ListFeedDigestResponse = { categories: {}, feedStatuses: {}, generatedAt: '' };
   const langs = lang === 'en' ? ['en'] : [lang, 'en'];
   let loadedAny = false;
 
   for (const digestLang of langs) {
-    for (const variant of DIGEST_VARIANTS) {
-      const data = await fetchDigestFile(`feed-digest-${variant}-${digestLang}.json`);
+    const data = await fetchDigestFile(`feed-digest-${variant}-${digestLang}.json`);
+    if (!data?.categories) continue;
+    loadedAny = true;
+    mergeDigestInto(merged, data);
+  }
+
+  return loadedAny && Object.keys(merged.categories ?? {}).length > 0 ? merged : null;
+}
+
+/** Merge all variant digests so custom panels (e.g. startups) hydrate on GitHub Pages. */
+async function loadMergedBakedDigest(variant: string, lang: string): Promise<ListFeedDigestResponse | null> {
+  const variantDigest = await loadVariantBakedDigest(variant, lang);
+  const variantCategoryCount = Object.keys(variantDigest?.categories ?? {}).length;
+  if (variantDigest && variantCategoryCount >= MIN_CATEGORIES_BEFORE_MERGE) {
+    return variantDigest;
+  }
+
+  const merged: ListFeedDigestResponse = variantDigest ?? { categories: {}, feedStatuses: {}, generatedAt: '' };
+  const langs = lang === 'en' ? ['en'] : [lang, 'en'];
+  let loadedAny = variantCategoryCount > 0;
+
+  for (const digestLang of langs) {
+    for (const digestVariant of DIGEST_VARIANTS) {
+      if (digestVariant === variant && variantDigest) continue;
+      const data = await fetchDigestFile(`feed-digest-${digestVariant}-${digestLang}.json`);
       if (!data?.categories) continue;
       loadedAny = true;
-      for (const [key, category] of Object.entries(data.categories)) {
-        const existing = categoryItemCount(merged.categories, key);
-        const incoming = category?.items?.length ?? 0;
-        if (incoming > existing) {
-          merged.categories![key] = category;
-        }
-      }
-      if (data.generatedAt && (!merged.generatedAt || data.generatedAt > merged.generatedAt)) {
-        merged.generatedAt = data.generatedAt;
-      }
-      Object.assign(merged.feedStatuses, data.feedStatuses ?? {});
+      mergeDigestInto(merged, data);
     }
   }
 
@@ -65,7 +98,7 @@ export async function loadBakedFeedDigest(
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const merged = await loadMergedBakedDigest(lang);
+  const merged = await loadMergedBakedDigest(variant, lang);
   if (merged) {
     cache.set(key, merged);
     return merged;
@@ -88,6 +121,6 @@ export function startLiveDigestPolling(
     if (digest) onUpdate?.(digest);
   };
 
-  void refresh();
+  // Defer first refresh — loadAllData() already hydrates news on boot.
   pollTimer = setInterval(() => { void refresh(); }, POLL_MS);
 }

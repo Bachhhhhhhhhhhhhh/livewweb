@@ -168,6 +168,11 @@ function htmlVariantPlugin(
         if (!result.includes('rel="manifest"')) {
           result = result.replace('</head>', `    ${manifestTag}\n  </head>`);
         }
+        // Umami tracker adds network + main-thread work; GitHub Pages hostname isn't in data-domains anyway.
+        result = result.replace(
+          /<!--[\s\S]*?Umami Analytics[\s\S]*?-->\s*<script async src="https:\/\/abacus\.worldmonitor\.app\/script\.js"[^>]*><\/script>\s*/g,
+          '',
+        );
       }
 
       result = result
