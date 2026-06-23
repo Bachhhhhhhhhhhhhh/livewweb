@@ -897,7 +897,8 @@ export default defineConfig(({ mode }) => {
   const activeMeta = VARIANT_META[activeVariant] || VARIANT_META.full;
 
   return {
-    base: isGitHubPages ? '/livewweb/' : '/',
+    // GitHub Pages serves the built site from repo /docs → URL prefix /livewweb/docs/
+    base: isGitHubPages ? '/livewweb/docs/' : '/',
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
       // Resolved + build-time validated above (devDependencies fallback +
