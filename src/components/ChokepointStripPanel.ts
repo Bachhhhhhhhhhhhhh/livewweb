@@ -1,7 +1,8 @@
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { joinSafeHtml, safeHtml, unsafeRawHtml, type SafeHtml } from '@/utils/sanitize';
-import { getHydratedData } from '@/services/bootstrap';
+import { resolvePanelBootstrap } from '@/services/bootstrap';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { fetchChokepointStatus } from '@/services/supply-chain';
 import { attributionFooterHtml, ATTRIBUTION_FOOTER_CSS } from '@/utils/attribution-footer';
 import type { GetChokepointStatusResponse, ChokepointInfo } from '@/generated/client/worldmonitor/supply_chain/v1/service_client';
@@ -63,15 +64,22 @@ export class ChokepointStripPanel extends Panel {
 
   public async fetchData(): Promise<void> {
     try {
-      const hydrated = getHydratedData('chokepoints') as GetChokepointStatusResponse | undefined;
+      const hydrated = await resolvePanelBootstrap<GetChokepointStatusResponse>('chokepoints');
       if (hydrated?.chokepoints?.length) {
         this.data = hydrated;
         this.render();
-        void fetchChokepointStatus().then(fresh => {
-          if (!this.element?.isConnected || !fresh?.chokepoints?.length) return;
-          this.data = fresh;
-          this.render();
-        }).catch(() => {});
+        if (!isStaticWebMirror()) {
+          void fetchChokepointStatus().then(fresh => {
+            if (!this.element?.isConnected || !fresh?.chokepoints?.length) return;
+            this.data = fresh;
+            this.render();
+          }).catch(() => {});
+        }
+        return;
+      }
+      if (isStaticWebMirror()) {
+        if (!this.element?.isConnected) return;
+        this.showError(t('components.chokepointStrip.errors.unavailable'), () => void this.fetchData());
         return;
       }
       const fresh = await fetchChokepointStatus();

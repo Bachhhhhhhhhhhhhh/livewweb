@@ -3,11 +3,55 @@ import { isStaticWebMirror } from '@/services/static-mirror';
 import { withBase } from '@/utils/app-base';
 
 const POLL_MS = 5 * 60 * 1000;
+const DIGEST_VARIANTS = ['full', 'tech', 'finance', 'world', 'happy', 'energy', 'commodity'] as const;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 const cache = new Map<string, ListFeedDigestResponse>();
 
 function cacheKey(variant: string, lang: string): string {
   return `${variant}:${lang}`;
+}
+
+function categoryItemCount(categories: ListFeedDigestResponse['categories'], key: string): number {
+  return categories?.[key]?.items?.length ?? 0;
+}
+
+async function fetchDigestFile(file: string): Promise<ListFeedDigestResponse | null> {
+  try {
+    const resp = await fetch(withBase(`/live-seed/${file}`), { cache: 'no-cache' });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as ListFeedDigestResponse;
+    return data.categories && Object.keys(data.categories).length > 0 ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Merge all variant digests so custom panels (e.g. startups) hydrate on GitHub Pages. */
+async function loadMergedBakedDigest(lang: string): Promise<ListFeedDigestResponse | null> {
+  const merged: ListFeedDigestResponse = { categories: {}, feedStatuses: {}, generatedAt: '' };
+  const langs = lang === 'en' ? ['en'] : [lang, 'en'];
+  let loadedAny = false;
+
+  for (const digestLang of langs) {
+    for (const variant of DIGEST_VARIANTS) {
+      const data = await fetchDigestFile(`feed-digest-${variant}-${digestLang}.json`);
+      if (!data?.categories) continue;
+      loadedAny = true;
+      for (const [key, category] of Object.entries(data.categories)) {
+        const existing = categoryItemCount(merged.categories, key);
+        const incoming = category?.items?.length ?? 0;
+        if (incoming > existing) {
+          merged.categories![key] = category;
+        }
+      }
+      if (data.generatedAt && (!merged.generatedAt || data.generatedAt > merged.generatedAt)) {
+        merged.generatedAt = data.generatedAt;
+      }
+      Object.assign(merged.feedStatuses, data.feedStatuses ?? {});
+    }
+  }
+
+  return loadedAny && Object.keys(merged.categories ?? {}).length > 0 ? merged : null;
 }
 
 /** CI-baked news digest for GitHub Pages (API CORS blocked on *.github.io). */
@@ -21,24 +65,10 @@ export async function loadBakedFeedDigest(
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const candidates = [
-    `feed-digest-${variant}-${lang}.json`,
-    lang !== 'en' ? `feed-digest-${variant}-en.json` : null,
-    variant !== 'full' ? `feed-digest-full-${lang}.json` : null,
-    variant !== 'full' && lang !== 'en' ? 'feed-digest-full-en.json' : null,
-  ].filter(Boolean) as string[];
-
-  for (const file of candidates) {
-    try {
-      const resp = await fetch(withBase(`/live-seed/${file}`), { cache: 'no-cache' });
-      if (!resp.ok) continue;
-      const data = (await resp.json()) as ListFeedDigestResponse;
-      if (!data.categories || Object.keys(data.categories).length === 0) continue;
-      cache.set(key, data);
-      return data;
-    } catch {
-      // try next candidate
-    }
+  const merged = await loadMergedBakedDigest(lang);
+  if (merged) {
+    cache.set(key, merged);
+    return merged;
   }
 
   return null;

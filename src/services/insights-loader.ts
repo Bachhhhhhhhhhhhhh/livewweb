@@ -1,5 +1,4 @@
 import { getHydratedData } from '@/services/bootstrap';
-import { toApiUrl } from '@/services/runtime';
 
 export interface ServerInsightStory {
   primaryTitle: string;
@@ -91,11 +90,8 @@ export function getServerInsights(): ServerInsights | null {
 export async function fetchServerInsights(timeoutMs = 5_000): Promise<ServerInsights | null> {
   if (cached && isFresh(cached)) return cached;
   try {
-    const resp = await fetch(toApiUrl('/api/bootstrap?keys=insights'), {
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!resp.ok) return null;
-    const payload = (await resp.json()) as { data?: { insights?: unknown } };
+    const { fetchBootstrapKeys } = await import('@/services/bootstrap');
+    const payload = await fetchBootstrapKeys('insights', { timeoutMs });
     const data = validateInsights(payload.data?.insights);
     if (data) cached = data;
     return data;

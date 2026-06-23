@@ -1,8 +1,8 @@
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
-import { getHydratedData } from '@/services/bootstrap';
-import { toApiUrl } from '@/services/runtime';
+import { fetchBootstrapKeys, resolvePanelBootstrap } from '@/services/bootstrap';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 interface WeekData {
   date: string;
@@ -135,25 +135,27 @@ export class AAIISentimentPanel extends Panel {
     // SSR hydration is one-shot: getHydratedData deletes the key after the
     // first read. Only the initial page-load call will hit this path — all
     // subsequent hourly refreshes fall through to the bootstrap API below.
-    const hydrated = getHydratedData('aaiiSentiment') as AAIIData | undefined;
+    const hydrated = await resolvePanelBootstrap<AAIIData>('aaiiSentiment');
     if (hydrated?.latest) {
       this.data = hydrated;
       this.renderPanel();
+      if (!isStaticWebMirror()) {
+        try {
+          const { data } = await fetchBootstrapKeys('aaiiSentiment');
+          if (data.aaiiSentiment && (data.aaiiSentiment as AAIIData).latest) {
+            this.data = data.aaiiSentiment as AAIIData;
+            this.renderPanel();
+          }
+        } catch { /* keep baked snapshot */ }
+      }
       return true;
     }
-    // Refresh path: fetch directly from the bootstrap API so the weekly
-    // dataset keeps flowing after the first paint.
     try {
-      const resp = await fetch(toApiUrl('/api/bootstrap?keys=aaiiSentiment'), {
-        signal: AbortSignal.timeout(5_000),
-      });
-      if (resp.ok) {
-        const { data } = (await resp.json()) as { data: { aaiiSentiment?: AAIIData } };
-        if (data.aaiiSentiment?.latest) {
-          this.data = data.aaiiSentiment;
-          this.renderPanel();
-          return true;
-        }
+      const { data } = await fetchBootstrapKeys('aaiiSentiment');
+      if (data.aaiiSentiment && (data.aaiiSentiment as AAIIData).latest) {
+        this.data = data.aaiiSentiment as AAIIData;
+        this.renderPanel();
+        return true;
       }
     } catch { /* fallback below */ }
     // Retry after ~5 minutes so the panel recovers on its own if the seed

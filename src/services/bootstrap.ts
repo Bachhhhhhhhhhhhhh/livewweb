@@ -33,8 +33,56 @@ let lastHydrationState: BootstrapHydrationState = {
 
 export function getHydratedData(key: string): unknown | undefined {
   const val = hydrationCache.get(key);
-  if (val !== undefined) hydrationCache.delete(key);
+  if (val === undefined) return undefined;
+  // Static mirror: keep keys in cache so multiple panels can read baked seed.
+  if (!isStaticWebMirror()) hydrationCache.delete(key);
   return val;
+}
+
+/** Async panel bootstrap read (hydration cache + baked live-seed on GitHub Pages). */
+export async function resolvePanelBootstrap<T = unknown>(key: string): Promise<T | undefined> {
+  const cached = hydrationCache.get(key);
+  if (cached !== undefined) return cached as T;
+  return (await readBootstrapKey(key)) as T | undefined;
+}
+
+/** Bootstrap key fetch — uses baked seed on GitHub Pages when API is blocked. */
+export async function fetchBootstrapKeys(
+  keys: string | string[],
+  options?: { signal?: AbortSignal; timeoutMs?: number },
+): Promise<{ data: Record<string, unknown> }> {
+  const keyList = Array.isArray(keys) ? keys : [keys];
+  if (isStaticWebMirror()) {
+    const data: Record<string, unknown> = {};
+    for (const key of keyList) {
+      const val = await readBootstrapKey(key);
+      if (val !== undefined) data[key] = val;
+    }
+    return { data };
+  }
+  try {
+    const resp = await fetch(toApiUrl(`/api/bootstrap?keys=${keyList.join(',')}`), {
+      signal: options?.signal ?? AbortSignal.timeout(options?.timeoutMs ?? 5_000),
+    });
+    if (!resp.ok) return { data: {} };
+    return (await resp.json()) as { data: Record<string, unknown> };
+  } catch {
+    return { data: {} };
+  }
+}
+
+/** Non-destructive bootstrap read; falls back to baked live-seed on GitHub Pages. */
+export async function readBootstrapKey(key: string): Promise<unknown | undefined> {
+  if (hydrationCache.has(key)) return hydrationCache.get(key);
+  if (!isStaticWebMirror()) return undefined;
+  for (const tier of ['fast', 'slow'] as const) {
+    const baked = await loadBakedSeedTier(tier);
+    if (baked && baked[key] !== undefined && baked[key] !== null) {
+      hydrationCache.set(key, baked[key]);
+      return baked[key];
+    }
+  }
+  return undefined;
 }
 
 export function markBootstrapAsLive(): void {

@@ -4,7 +4,8 @@ import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
 import { MarketServiceClient } from '@/generated/client/worldmonitor/market/v1/service_client';
 import type { ListEtfFlowsResponse } from '@/generated/client/worldmonitor/market/v1/service_client';
-import { getHydratedData } from '@/services/bootstrap';
+import { resolvePanelBootstrap } from '@/services/bootstrap';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 type ETFFlowsResult = ListEtfFlowsResponse;
 
@@ -36,13 +37,19 @@ export class ETFFlowsPanel extends Panel {
   }
 
   public async fetchData(): Promise<void> {
-    const hydrated = getHydratedData('etfFlows') as ETFFlowsResult | undefined;
+    const hydrated = await resolvePanelBootstrap<ETFFlowsResult>('etfFlows');
     if (hydrated?.etfs?.length) {
       this.data = hydrated;
       this.error = null;
       this.loading = false;
       this.renderPanel();
-      void this.refreshFromRpc();
+      if (!isStaticWebMirror()) void this.refreshFromRpc();
+      return;
+    }
+    if (isStaticWebMirror()) {
+      this.error = t('components.etfFlows.unavailable');
+      this.loading = false;
+      this.renderPanel();
       return;
     }
     await this.refreshFromRpc();

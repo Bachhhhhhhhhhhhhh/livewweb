@@ -1,7 +1,8 @@
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { joinSafeHtml, safeHtml, safeUrlAttr, type SafeHtml } from '@/utils/sanitize';
-import { getHydratedData } from '@/services/bootstrap';
+import { resolvePanelBootstrap } from '@/services/bootstrap';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { getRpcBaseUrl } from '@/services/rpc-client';
 import { ClimateServiceClient } from '@/generated/client/worldmonitor/climate/v1/service_client';
 import type { ListClimateNewsResponse, ClimateNewsItem } from '@/generated/client/worldmonitor/climate/v1/service_client';
@@ -48,16 +49,26 @@ export class ClimateNewsPanel extends Panel {
 
   public async fetchData(): Promise<void> {
     try {
-      const hydrated = getHydratedData('climateNews') as ListClimateNewsResponse | undefined;
+      const hydrated = await resolvePanelBootstrap<ListClimateNewsResponse>('climateNews');
+
       if (hydrated?.items?.length) {
         if (!this.element?.isConnected) return;
         this.renderNewsList(hydrated);
-        void client.listClimateNews({}).then(data => {
-          if (!this.element?.isConnected || !data.items?.length) return;
-          this.renderNewsList(data);
-        }).catch(() => {});
+        if (!isStaticWebMirror()) {
+          void client.listClimateNews({}).then(data => {
+            if (!this.element?.isConnected || !data.items?.length) return;
+            this.renderNewsList(data);
+          }).catch(() => {});
+        }
         return;
       }
+
+      if (isStaticWebMirror()) {
+        if (!this.element?.isConnected) return;
+        this.showError(t('components.climateNews.loadError'), () => void this.fetchData());
+        return;
+      }
+
       const data = await client.listClimateNews({});
       if (!this.element?.isConnected) return;
       this.renderNewsList(data);

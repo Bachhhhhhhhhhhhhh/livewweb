@@ -312,6 +312,16 @@ export class DataLoaderManager implements AppModule {
   private readonly perFeedFallbackCategoryFeedLimit = 3;
   private readonly perFeedFallbackIntelFeedLimit = 6;
   private readonly perFeedFallbackBatchSize = 2;
+
+  private getPerFeedCategoryLimit(isCustom: boolean): number {
+    if (isCustom || isStaticWebMirror()) return Number.POSITIVE_INFINITY;
+    return this.perFeedFallbackCategoryFeedLimit;
+  }
+
+  private getPerFeedIntelLimit(): number {
+    if (isStaticWebMirror()) return Number.POSITIVE_INFINITY;
+    return this.perFeedFallbackIntelFeedLimit;
+  }
   private lastGoodDigest: ListFeedDigestResponse | null = null;
 
   constructor(ctx: AppContext, callbacks: DataLoaderCallbacks) {
@@ -984,37 +994,38 @@ export class DataLoaderManager implements AppModule {
       }
       const enabledNames = new Set(enabledFeeds.map(f => f.name));
 
-      // Digest branch: server already aggregated feeds — map proto items to client types
+      // Digest branch: server already aggregated feeds — map proto items to client types.
+      // Empty digest entries (e.g. crisis=0) fall through to RSS on static mirror / fallback.
       if (digest?.categories && category in digest.categories) {
-        const items = (digest.categories[category]?.items ?? [])
+        const digestItems = (digest.categories[category]?.items ?? [])
           .map(protoItemToNewsItem)
           .filter(i => enabledNames.has(i.source));
 
-        ingestHeadlines(items.map(i => ({ title: i.title, pubDate: i.pubDate, source: i.source, link: i.link })));
+        if (digestItems.length > 0 || (!this.isPerFeedFallbackEnabled() && !isCustom)) {
+          ingestHeadlines(digestItems.map(i => ({ title: i.title, pubDate: i.pubDate, source: i.source, link: i.link })));
+          checkBatchForBreakingAlerts(digestItems);
+          this.flashMapForNews(digestItems);
+          this.renderNewsForCategory(category, digestItems);
 
-        // Skip client-side AI reclassification for digest items.
-        // The server already ran enrichWithAiCache() which checks the same Redis keys
-        // that classifyEvent writes to. Re-firing classifyEvent from every client wastes
-        // edge requests even when they're Redis cache hits.
+          this.ctx.statusPanel?.updateFeed(category.charAt(0).toUpperCase() + category.slice(1), {
+            status: 'ok',
+            itemCount: digestItems.length,
+          });
 
-        checkBatchForBreakingAlerts(items);
-        this.flashMapForNews(items);
-        this.renderNewsForCategory(category, items);
+          if (panel && options.recordBaselineSample) {
+            try {
+              const baseline = await updateBaseline(`news:${category}`, digestItems.length);
+              const deviation = calculateDeviation(digestItems.length, baseline);
+              panel.setDeviation(deviation.zScore, deviation.percentChange, deviation.level);
+            } catch (e) { console.warn(`[Baseline] news:${category} write failed:`, e); }
+          }
 
-        this.ctx.statusPanel?.updateFeed(category.charAt(0).toUpperCase() + category.slice(1), {
-          status: 'ok',
-          itemCount: items.length,
-        });
-
-        if (panel && options.recordBaselineSample) {
-          try {
-            const baseline = await updateBaseline(`news:${category}`, items.length);
-            const deviation = calculateDeviation(items.length, baseline);
-            panel.setDeviation(deviation.zScore, deviation.percentChange, deviation.level);
-          } catch (e) { console.warn(`[Baseline] news:${category} write failed:`, e); }
+          if (digestItems.length > 0) return digestItems;
+          if (panel && digestItems.length === 0) panel.showError(t('common.noNewsAvailable'));
+          return digestItems;
         }
 
-        return items;
+        console.warn(`[News] Digest empty for "${category}", using per-feed RSS fallback`);
       }
 
       // Per-feed fallback: fetch each feed individually (first load or digest unavailable)
@@ -1085,9 +1096,7 @@ export class DataLoaderManager implements AppModule {
 
       // Custom categories fetch their full feed set (no thundering-herd risk);
       // preset categories stay capped by perFeedFallbackCategoryFeedLimit.
-      const fallbackFeeds = isCustom
-        ? enabledFeeds
-        : this.selectLimitedFeeds(enabledFeeds, this.perFeedFallbackCategoryFeedLimit);
+      const fallbackFeeds = this.selectLimitedFeeds(enabledFeeds, this.getPerFeedCategoryLimit(isCustom));
       if (isCustom) {
         console.warn(`[News] Custom category "${category}" (not in variant preset), fetching ${fallbackFeeds.length} feeds directly`);
       } else if (options.allowDigestPendingFallback) {
@@ -1167,22 +1176,26 @@ export class DataLoaderManager implements AppModule {
     }
 
     if (digest?.categories && 'intel' in digest.categories) {
-      // Digest branch for intel
       const intel = (digest.categories['intel']?.items ?? [])
         .map(protoItemToNewsItem)
         .filter(i => enabledIntelNames.has(i.source));
-      checkBatchForBreakingAlerts(intel);
-      this.renderNewsForCategory('intel', intel);
-      if (intelPanel && options.recordBaselineSample) {
-        try {
-          const baseline = await updateBaseline('news:intel', intel.length);
-          const deviation = calculateDeviation(intel.length, baseline);
-          intelPanel.setDeviation(deviation.zScore, deviation.percentChange, deviation.level);
-        } catch (e) { console.warn('[Baseline] news:intel write failed:', e); }
+
+      if (intel.length > 0 || !this.isPerFeedFallbackEnabled()) {
+        checkBatchForBreakingAlerts(intel);
+        this.renderNewsForCategory('intel', intel);
+        if (intelPanel && options.recordBaselineSample) {
+          try {
+            const baseline = await updateBaseline('news:intel', intel.length);
+            const deviation = calculateDeviation(intel.length, baseline);
+            intelPanel.setDeviation(deviation.zScore, deviation.percentChange, deviation.level);
+          } catch (e) { console.warn('[Baseline] news:intel write failed:', e); }
+        }
+        this.ctx.statusPanel?.updateFeed('Intel', { status: 'ok', itemCount: intel.length });
+        this.flashMapForNews(intel);
+        if (intel.length > 0) return intel;
+      } else {
+        console.warn('[News] Intel digest empty, using per-feed RSS fallback');
       }
-      this.ctx.statusPanel?.updateFeed('Intel', { status: 'ok', itemCount: intel.length });
-      this.flashMapForNews(intel);
-      return intel;
     }
 
     const staleIntel = this.getStaleNewsItems('intel').filter(i => enabledIntelNames.has(i.source));
@@ -1207,7 +1220,7 @@ export class DataLoaderManager implements AppModule {
       return [];
     }
 
-    const fallbackIntelFeeds = this.selectLimitedFeeds(enabledIntelSources, this.perFeedFallbackIntelFeedLimit);
+    const fallbackIntelFeeds = this.selectLimitedFeeds(enabledIntelSources, this.getPerFeedIntelLimit());
     if (allowDigestPendingFallback) {
       console.warn(`[News] Intel digest still pending, using limited per-feed fallback (${fallbackIntelFeeds.length}/${enabledIntelSources.length} feeds)`);
     } else if (fallbackIntelFeeds.length < enabledIntelSources.length) {
