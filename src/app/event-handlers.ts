@@ -91,7 +91,9 @@ import { AuthLauncher } from '@/components/AuthLauncher';
 import { AuthHeaderWidget } from '@/components/AuthHeaderWidget';
 import { t } from '@/services/i18n';
 import { TvModeController } from '@/services/tv-mode';
-import { getAuthState, subscribeAuthState } from '@/services/auth-state';
+import { subscribeAuthState } from '@/services/auth-state';
+import { shouldShowAuthUi } from '@/services/static-mirror';
+import { hasPremiumAccess } from '@/services/panel-gating';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 import { escapeHtml } from '@/utils/sanitize';
 import { buildEmbedIframeSnippet, buildEmbedMapUrl, type EmbedVariant } from '@/embed/embed-url';
@@ -1577,8 +1579,8 @@ export class EventHandlerManager implements AppModule {
       el.style.display = isPro ? '' : 'none';
       if (initial && !isPro) trackGateHit('export');
     };
-    applyProGate(getAuthState().user?.role === 'pro', true);
-    this.proGateUnsubscribers.push(subscribeAuthState(state => applyProGate(state.user?.role === 'pro')));
+    applyProGate(hasPremiumAccess(), true);
+    this.proGateUnsubscribers.push(subscribeAuthState(() => applyProGate(hasPremiumAccess())));
   }
 
   setupUnifiedSettings(): void {
@@ -1683,6 +1685,7 @@ export class EventHandlerManager implements AppModule {
   }
 
   setupAuthWidget(): void {
+    if (!shouldShowAuthUi()) return;
     const modal = new AuthLauncher();
     this.ctx.authModal = modal;
 
@@ -1722,8 +1725,8 @@ export class EventHandlerManager implements AppModule {
       el.style.display = isPro ? '' : 'none';
       if (initial && !isPro) trackGateHit('playback');
     };
-    applyProGate(getAuthState().user?.role === 'pro', true);
-    this.proGateUnsubscribers.push(subscribeAuthState(state => applyProGate(state.user?.role === 'pro')));
+    applyProGate(hasPremiumAccess(), true);
+    this.proGateUnsubscribers.push(subscribeAuthState(() => applyProGate(hasPremiumAccess())));
   }
 
   setupSnapshotSaving(): void {

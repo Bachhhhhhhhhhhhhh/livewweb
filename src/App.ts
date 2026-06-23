@@ -85,8 +85,9 @@ import { selectSourcesUnderCap, findFullyDisabledCategories } from '@/services/s
 import { fetchBootstrapData, getBootstrapHydrationState, markBootstrapAsLive, startLiveSeedPolling, type BootstrapHydrationState } from '@/services/bootstrap';
 import { startLiveDigestPolling } from '@/services/live-seed-digest';
 import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm-session';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { isStaticWebMirror, shouldShowAuthUi } from '@/services/static-mirror';
 import { deferStaticMirrorIdleWork, shouldRunHealthFreshnessRefresh } from '@/services/static-mirror-performance';
+import { applyForkPanelBoost, tuneMapLayersForStaticMirror } from '@/config/fork-defaults';
 import { resolveShellDocumentTitle } from '@/config/site-branding';
 
 import { describeFreshness } from '@/services/persistent-cache';
@@ -588,7 +589,9 @@ export class App {
     const monitors = loadFromStorage<Monitor[]>(STORAGE_KEYS.monitors, []);
 
     // Use mobile-specific defaults on first load (no saved layers)
-    const defaultLayers = isMobile ? MOBILE_DEFAULT_MAP_LAYERS : DEFAULT_MAP_LAYERS;
+    const defaultLayers = tuneMapLayersForStaticMirror(
+      isMobile ? MOBILE_DEFAULT_MAP_LAYERS : DEFAULT_MAP_LAYERS,
+    );
 
     let mapLayers: MapLayers;
     let panelSettings: Record<string, PanelConfig>;
@@ -815,6 +818,8 @@ export class App {
       }
     }
 
+    applyForkPanelBoost(panelSettings);
+
     const initialUrlState: ParsedMapUrlState | null = parseMapUrlState(window.location.search, mapLayers);
     if (initialUrlState.layers) {
       mapLayers = normalizeExclusiveChoropleths(
@@ -989,15 +994,15 @@ export class App {
     // panel to exist instead of throwing. A 10s timeout keeps a genuinely
     // broken state from hanging the caller. Store the returned controller
     // so destroy() can unregister every tool on teardown.
-    this.webMcpController = registerWebMcpTools({
-      openCountryBriefByCode: async (code, country) => {
+    const webMcpBindings = {
+      openCountryBriefByCode: async (code: string, country: string) => {
         await this.waitForUiReady();
         if (!this.state.countryBriefPage) {
           throw new Error('Country brief panel is not initialised');
         }
         await this.countryIntel.openCountryBriefByCode(code, country);
       },
-      resolveCountryName: (code) => CountryIntelManager.resolveCountryName(code),
+      resolveCountryName: (code: string) => CountryIntelManager.resolveCountryName(code),
       openSearch: async () => {
         await this.waitForUiReady();
         if (!this.state.searchModal) {
@@ -1005,7 +1010,14 @@ export class App {
         }
         this.state.searchModal.open();
       },
-    });
+    };
+    if (isStaticWebMirror()) {
+      deferStaticMirrorIdleWork(() => {
+        this.webMcpController = registerWebMcpTools(webMcpBindings);
+      });
+    } else {
+      this.webMcpController = registerWebMcpTools(webMcpBindings);
+    }
 
     await initDB();
     startFlightHistoryCleanup();
@@ -1125,7 +1137,9 @@ export class App {
 
     // Verify OAuth OTT and hydrate auth session BEFORE any UI subscribes to auth state
     await initAuthState();
-    initAuthAnalytics();
+    if (shouldShowAuthUi()) {
+      initAuthAnalytics();
+    }
     if (!isStaticWebMirror()) {
       installCloudPrefsSync(SITE_VARIANT);
     }
@@ -1245,7 +1259,9 @@ export class App {
     // init() is async so the dynamic MapContainer import can resolve before
     // downstream code (e.g. mobileGeoCoords→state.map.setCenter) reads ctx.map.
     await this.panelLayout.init();
-    showProBanner(this.state.container);
+    if (shouldShowAuthUi()) {
+      showProBanner(this.state.container);
+    }
     this.updateConnectivityUi();
     window.addEventListener('online', this.handleConnectivityChange);
     window.addEventListener('offline', this.handleConnectivityChange);
@@ -1279,7 +1295,11 @@ export class App {
       });
     }
 
-    initBreakingNewsAlerts();
+    if (isStaticWebMirror()) {
+      deferStaticMirrorIdleWork(() => initBreakingNewsAlerts());
+    } else {
+      initBreakingNewsAlerts();
+    }
     this.state.breakingBanner = new BreakingNewsBanner();
 
     // Phase 3: UI setup methods
@@ -1304,11 +1324,13 @@ export class App {
     // capture so a /dashboard?ref=X&checkoutProduct=Y landing preserves both
     // signals. Pure read of current URL — no-op when neither param is
     // present.
-    captureReferralFromUrl();
-    // Wire checkout-attempt lifecycle watchers (sign-out clear) before
-    // any capture/resume path runs, so a stale session from a prior
-    // user can't bleed into the current one.
-    initCheckoutWatchers();
+    if (shouldShowAuthUi()) {
+      captureReferralFromUrl();
+      // Wire checkout-attempt lifecycle watchers (sign-out clear) before
+      // any capture/resume path runs, so a stale session from a prior
+      // user can't bleed into the current one.
+      initCheckoutWatchers();
+    }
     // Stale attempt records are ignored by loadCheckoutAttempt() via
     // the 24h TTL — no separate sweep needed. The attempt record's
     // only consumer (the failure-retry banner) runs handleCheckoutReturn
@@ -1371,24 +1393,31 @@ export class App {
     // panels currently above the fold. IntersectionObserver wiring in
     // panel-layout.ts plus handleViewportPrime above re-trigger
     // loadAllData() as below-fold panels enter the viewport. (#3990)
-    await Promise.all([
-      this.dataLoader.loadAllData(),
-      this.primeVisiblePanelData(),
-    ]);
+    await this.dataLoader.loadAllData();
+    if (isStaticWebMirror()) {
+      deferStaticMirrorIdleWork(() => { void this.primeVisiblePanelData(); });
+    } else {
+      await this.primeVisiblePanelData();
+    }
 
     // If bootstrap was served from cache but live data just loaded, promote the status indicator
     markBootstrapAsLive();
     this.bootstrapHydrationState = getBootstrapHydrationState();
     this.updateConnectivityUi();
 
-    // Initial correlation engine run
-    if (this.state.correlationEngine) {
+    const runCorrelationEngine = () => {
+      if (!this.state.correlationEngine) return;
       void this.state.correlationEngine.run(this.state).then(() => {
         for (const domain of ['military', 'escalation', 'economic', 'disaster'] as const) {
           const panel = this.state.panels[`${domain}-correlation`] as CorrelationPanel | undefined;
           panel?.updateCards(this.state.correlationEngine!.getCards(domain));
         }
       });
+    };
+    if (isStaticWebMirror()) {
+      deferStaticMirrorIdleWork(runCorrelationEngine);
+    } else {
+      runCorrelationEngine();
     }
 
     startLearning();

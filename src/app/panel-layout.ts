@@ -114,7 +114,8 @@ import { getSiteDisplayName, getSiteLogoShort, getSiteNameUpper } from '@/config
 import { t } from '@/services/i18n';
 import { getCurrentTheme } from '@/utils';
 import { trackCriticalBannerAction } from '@/services/analytics';
-import { getStoredMapModePreference } from '@/services/map-mode-preference';
+import { getEffectiveMapModePreference } from '@/services/map-mode-preference';
+import { shouldShowAuthUi } from '@/services/static-mirror';
 import { CustomWidgetPanel } from '@/components/CustomWidgetPanel';
 import { openWidgetChatModal } from '@/components/WidgetChatModal';
 import { loadWidgets, saveWidget, isProUser } from '@/services/widget-store';
@@ -494,7 +495,7 @@ export class PanelLayoutManager implements AppModule {
   }
 
   async renderLayout(): Promise<void> {
-    const isGlobeMode = import.meta.env.VITE_UNLOCK_ALL === '1' || getStoredMapModePreference() === 'globe';
+    const isGlobeMode = getEffectiveMapModePreference() === 'globe';
 
     setTrustedHtml(this.ctx.container, trustedHtml(`
       ${this.ctx.isDesktopApp ? '<div class="tauri-titlebar" data-tauri-drag-region></div>' : ''}
@@ -601,7 +602,7 @@ export class PanelLayoutManager implements AppModule {
           ${this.ctx.isDesktopApp ? '' : `<button class="fullscreen-btn" id="fullscreenBtn" title="${t('header.fullscreen')}">⛶</button>`}
           ${SITE_VARIANT === 'happy' ? `<button class="tv-mode-btn" id="tvModeBtn" title="TV Mode (Shift+T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>` : ''}
           <span id="unifiedSettingsMount"></span>
-          <span id="authWidgetMount" class="auth-widget-mount"></span>
+          ${shouldShowAuthUi() ? '<span id="authWidgetMount" class="auth-widget-mount"></span>' : ''}
         </div>
       </div>
       <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
@@ -1132,7 +1133,7 @@ export class PanelLayoutManager implements AppModule {
     const panelsGrid = document.getElementById('panelsGrid')!;
 
     const mapContainer = document.getElementById('mapContainer') as HTMLElement;
-    const preferGlobe = import.meta.env.VITE_UNLOCK_ALL === '1' || getStoredMapModePreference() === 'globe';
+    const preferGlobe = getEffectiveMapModePreference() === 'globe';
     // Dynamic import: keeps maplibre-gl + @deck.gl/* + @loaders.gl + @luma.gl
     // out of the entry chunk. Loads in parallel with paint, so the map mounts
     // a beat after the panel grid renders instead of blocking it.

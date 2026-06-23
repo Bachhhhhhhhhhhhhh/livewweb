@@ -10,3 +10,8 @@ export function isStaticWebMirror(): boolean {
 export function shouldRegisterServiceWorker(): boolean {
   return !isStaticWebMirror() && APP_BASE_PATH === '';
 }
+
+/** Hide Clerk sign-in / create-account UI on GitHub Pages (all features unlocked locally). */
+export function shouldShowAuthUi(): boolean {
+  return !isStaticWebMirror();
+}
