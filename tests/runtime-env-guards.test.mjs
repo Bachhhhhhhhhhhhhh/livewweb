@@ -17,7 +17,10 @@ describe('runtime env guards', () => {
   });
 
   it('reuses the guarded ENV wrapper for runtime env lookups', () => {
-    assert.ok(runtimeSrc.includes('const WS_API_URL = ENV.VITE_WS_API_URL || \'\''), 'WS API URL should read from ENV');
+    assert.ok(
+      runtimeSrc.includes('const WS_API_URL = import.meta.env.VITE_WS_API_URL || \'\''),
+      'WS API URL should read directly from import.meta.env for Vite inlining',
+    );
     assert.ok(runtimeSrc.includes('const FORCE_DESKTOP_RUNTIME = ENV.VITE_DESKTOP_RUNTIME === \'1\''), 'Desktop runtime flag should read from ENV');
     assert.ok(runtimeSrc.includes('const configuredBaseUrl = ENV.VITE_TAURI_API_BASE_URL;'), 'Tauri API base should read from ENV');
     assert.ok(runtimeSrc.includes('const configuredRemoteBase = ENV.VITE_TAURI_REMOTE_API_BASE_URL;'), 'Remote API base should read from ENV');

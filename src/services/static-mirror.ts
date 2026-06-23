@@ -18,7 +18,7 @@ export function shouldShowAuthUi(): boolean {
 
 /** True when the static mirror build has a live API proxy (VITE_WS_API_URL). */
 export function hasStaticMirrorLiveApi(): boolean {
-  return isStaticWebMirror() && Boolean(import.meta.env.VITE_WS_API_URL);
+  return isStaticWebMirror() && (import.meta.env.VITE_WS_API_URL?.length ?? 0) > 0;
 }
 
 /** Live RPC/API refresh (not only baked seed) — enabled on web and GitHub Pages with proxy. */

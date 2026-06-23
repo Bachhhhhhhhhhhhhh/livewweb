@@ -10,7 +10,8 @@ const ENV = (() => {
   }
 })();
 
-const WS_API_URL = ENV.VITE_WS_API_URL || '';
+// Direct access required — Vite only inlines import.meta.env.VITE_* at build time.
+const WS_API_URL = import.meta.env.VITE_WS_API_URL || '';
 const DEFAULT_WEB_API_URL = 'https://api.worldmonitor.app';
 const KEYED_CLOUD_API_PATTERN = /^\/api\/(?:[^/]+\/v1\/|bootstrap(?:\?|$)|polymarket(?:\?|$)|ais-snapshot(?:\?|$))/;
 
