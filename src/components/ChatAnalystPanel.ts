@@ -5,6 +5,7 @@ import DOMPurify from 'dompurify';
 import { postProcessAnalystHtml } from '@/utils/analyst-markdown';
 import { premiumFetch } from '@/services/premium-fetch';
 import { canUseClientAnalyst, streamClientAnalyst } from '@/services/client-analyst';
+import { buildStaticAnalystReply } from '@/services/static-analyst';
 import { isStaticWebMirror } from '@/services/static-mirror';
 import { trackAnalystControlAction } from '@/services/analytics';
 import { h, replaceChildren, setTrustedHtml, trustedHtml, type TrustedHtml } from '@/utils/dom-utils';
@@ -502,6 +503,14 @@ export class ChatAnalystPanel extends Panel {
       });
 
       if (!res.ok) {
+        if (isStaticWebMirror()) {
+          const staticReply = await buildStaticAnalystReply(trimmedQuery, this.domainFocus);
+          if (staticReply) {
+            this.finalizeStreamingBubble(streamingBody, staticReply, true);
+            this.pushHistory(trimmedQuery, staticReply);
+            return;
+          }
+        }
         if (isStaticWebMirror() && (res.status === 404 || res.status >= 500) && canUseClientAnalyst()) {
           const clientResult = await streamClientAnalyst(
             trimmedQuery,
@@ -556,21 +565,29 @@ export class ChatAnalystPanel extends Panel {
         } else {
           this.finalizeStreamingBubble(streamingBody, '⚠ Request cancelled.', false);
         }
-      } else if (isStaticWebMirror() && canUseClientAnalyst()) {
-        const clientResult = await streamClientAnalyst(
-          trimmedQuery,
-          trimmedHistory,
-          this.domainFocus,
-          (text) => {
-            accumulatedText = text;
-            setTrustedHtml(streamingBody, renderMarkdown(text));
-            this.scrollToBottom();
-          },
-          this.streamAbort.signal,
-        );
-        if (clientResult === 'done') {
-          this.finalizeStreamingBubble(streamingBody, accumulatedText, true);
-          this.pushHistory(trimmedQuery, accumulatedText);
+      } else if (isStaticWebMirror()) {
+        const staticReply = await buildStaticAnalystReply(trimmedQuery, this.domainFocus);
+        if (staticReply) {
+          this.finalizeStreamingBubble(streamingBody, staticReply, true);
+          this.pushHistory(trimmedQuery, staticReply);
+        } else if (canUseClientAnalyst()) {
+          const clientResult = await streamClientAnalyst(
+            trimmedQuery,
+            trimmedHistory,
+            this.domainFocus,
+            (text) => {
+              accumulatedText = text;
+              setTrustedHtml(streamingBody, renderMarkdown(text));
+              this.scrollToBottom();
+            },
+            this.streamAbort.signal,
+          );
+          if (clientResult === 'done') {
+            this.finalizeStreamingBubble(streamingBody, accumulatedText, true);
+            this.pushHistory(trimmedQuery, accumulatedText);
+          } else {
+            this.finalizeStreamingBubble(streamingBody, '⚠ AI unavailable. Add GROQ_API_KEY in Settings.', false);
+          }
         } else {
           this.finalizeStreamingBubble(streamingBody, '⚠ AI unavailable. Add GROQ_API_KEY in Settings.', false);
         }

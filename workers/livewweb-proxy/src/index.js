@@ -65,6 +65,10 @@ async function proxyUpstream(request, pathname, cors) {
   headers.set('User-Agent', UA);
   headers.set('Origin', UPSTREAM_ORIGIN);
   if (cookie) headers.set('Cookie', cookie);
+  const auth = request.headers.get('Authorization');
+  if (auth) headers.set('Authorization', auth);
+  const wmKey = request.headers.get('X-WorldMonitor-Key') ?? request.headers.get('X-Api-Key');
+  if (wmKey) headers.set('X-WorldMonitor-Key', wmKey);
   const ct = request.headers.get('content-type');
   if (ct) headers.set('Content-Type', ct);
 

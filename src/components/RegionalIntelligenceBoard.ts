@@ -9,6 +9,8 @@ import type { RegionalSnapshot, RegimeTransition, RegionalBrief } from '@/genera
 import { h, replaceChildren, setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 import { escapeHtml } from '@/utils/sanitize';
 import { BOARD_REGIONS, DEFAULT_REGION_ID, buildBoardHtml, buildRegimeHistoryBlock, buildWeeklyBriefBlock, isLatestSequence } from './regional-intelligence-board-utils';
+import { buildStaticRegionalHtml } from '@/services/static-analyst';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 // get-regional-snapshot + get-regime-history + get-regional-brief are
 // premium-gated. Plain globalThis.fetch skips Clerk/tester/api-key injection
@@ -186,6 +188,13 @@ export class RegionalIntelligenceBoard extends Panel {
       snapshot = resp.snapshot;
     } catch (err) {
       if (!isLatestSequence(mySequence, this.latestSequence)) return;
+      if (isStaticWebMirror()) {
+        const html = await buildStaticRegionalHtml(myRegion);
+        if (html) {
+          setTrustedHtml(this.body, trustedHtml(html, 'legacy direct innerHTML migration'));
+          return;
+        }
+      }
       this.renderError(err instanceof Error ? err.message : String(err));
       return;
     }
@@ -243,6 +252,13 @@ export class RegionalIntelligenceBoard extends Panel {
     }
 
     if (!snapshot?.regionId) {
+      if (isStaticWebMirror()) {
+        const html = await buildStaticRegionalHtml(myRegion);
+        if (html) {
+          setTrustedHtml(this.body, trustedHtml(html, 'legacy direct innerHTML migration'));
+          return;
+        }
+      }
       this.renderEmpty();
       return;
     }

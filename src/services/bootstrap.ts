@@ -1,6 +1,6 @@
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { hasStaticMirrorLiveApi, isStaticWebMirror } from '@/services/static-mirror';
 import { withBase } from '@/utils/app-base';
 
 const hydrationCache = new Map<string, unknown>();
@@ -52,6 +52,21 @@ export async function fetchBootstrapKeys(
   options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<{ data: Record<string, unknown> }> {
   const keyList = Array.isArray(keys) ? keys : [keys];
+  if (isStaticWebMirror() && hasStaticMirrorLiveApi()) {
+    try {
+      const resp = await fetch(toApiUrl(`/api/bootstrap?keys=${keyList.join(',')}`), {
+        signal: options?.signal ?? AbortSignal.timeout(options?.timeoutMs ?? 8_000),
+      });
+      if (resp.ok) {
+        const payload = (await resp.json()) as { data?: Record<string, unknown> };
+        const data = payload.data ?? {};
+        populateCache(data);
+        return { data };
+      }
+    } catch {
+      // Fall through to baked seed.
+    }
+  }
   if (isStaticWebMirror()) {
     const data: Record<string, unknown> = {};
     for (const key of keyList) {

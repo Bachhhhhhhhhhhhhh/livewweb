@@ -1,4 +1,5 @@
 import { getHydratedData } from '@/services/bootstrap';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 export interface ServerInsightStory {
   primaryTitle: string;
@@ -43,10 +44,16 @@ let cached: ServerInsights | null = null;
 // Exported so the regression test asserts against the real value rather than
 // inlining a copy that drifts silently when this constant changes.
 export const MAX_AGE_MS = 60 * 60 * 1000;
+/** Baked GitHub Pages seed — refreshed at build time, not every hour. */
+const STATIC_MIRROR_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getMaxAgeMs(): number {
+  return isStaticWebMirror() ? STATIC_MIRROR_MAX_AGE_MS : MAX_AGE_MS;
+}
 
 function isFresh(data: ServerInsights): boolean {
   const age = Date.now() - new Date(data.generatedAt).getTime();
-  return age < MAX_AGE_MS;
+  return age < getMaxAgeMs();
 }
 
 function validateInsights(raw: unknown): ServerInsights | null {

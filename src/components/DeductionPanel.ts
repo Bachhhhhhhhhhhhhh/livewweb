@@ -11,6 +11,8 @@ import { getActiveFrameworkForPanel } from '@/services/analysis-framework-store'
 import { hasPremiumAccess } from '@/services/panel-gating';
 import { FrameworkSelector } from './FrameworkSelector';
 import { extractDeductionProbability } from './deduction-probability';
+import { buildStaticDeduction } from '@/services/static-analyst';
+import { isStaticWebMirror } from '@/services/static-mirror';
 
 // deduct-situation + list-market-implications are premium-gated.
 const client = new IntelligenceServiceClient(getRpcBaseUrl(), { fetch: premiumFetch });
@@ -264,6 +266,13 @@ export class DeductionPanel extends Panel {
                 const safe = DOMPurify.sanitize(parsed);
                 setTrustedHtml(this.resultContainer, trustedHtml(safe, 'legacy direct innerHTML migration'));
                 this.reformatResult(this.resultContainer);
+            } else if (isStaticWebMirror()) {
+                const fallback = await buildStaticDeduction(query, geoContext);
+                const parsed = await marked.parse(fallback);
+                if (!this.element?.isConnected) return;
+                const safe = DOMPurify.sanitize(parsed);
+                setTrustedHtml(this.resultContainer, trustedHtml(safe, 'legacy direct innerHTML migration'));
+                this.reformatResult(this.resultContainer);
             } else {
                 this.resultContainer.textContent = resp.provider === 'error'
                     ? 'AI analysis temporarily unavailable. Please try again in a moment.'
@@ -272,8 +281,18 @@ export class DeductionPanel extends Panel {
         } catch (err) {
             if (!this.element?.isConnected) return;
             console.error('[DeductionPanel] Error:', err);
-            this.resultContainer.className = 'deduction-result error';
-            this.resultContainer.textContent = 'An error occurred while analyzing the situation.';
+            if (isStaticWebMirror()) {
+                const fallback = await buildStaticDeduction(query, geoContext);
+                const parsed = await marked.parse(fallback);
+                if (!this.element?.isConnected) return;
+                const safe = DOMPurify.sanitize(parsed);
+                this.resultContainer.className = 'deduction-result';
+                setTrustedHtml(this.resultContainer, trustedHtml(safe, 'legacy direct innerHTML migration'));
+                this.reformatResult(this.resultContainer);
+            } else {
+                this.resultContainer.className = 'deduction-result error';
+                this.resultContainer.textContent = 'An error occurred while analyzing the situation.';
+            }
         } finally {
             this.isSubmitting = false;
             if (this.element?.isConnected) {
