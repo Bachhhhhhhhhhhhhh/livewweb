@@ -71,15 +71,19 @@ jobs:
           import { join } from 'node:path';
 
           const pages = ['dashboard.html', 'index.html', '404.html'];
-          const assetRe = /(?:src|href)="(\/?assets\/[^"]+)"/g;
+          const assetRe = /(?:src|href)="(\/livewweb\/docs\/assets\/[^"]+|\/?assets\/[^"]+)"/g;
           const missing = [];
 
           for (const page of pages) {
             const file = join('dist', page);
             if (!existsSync(file)) continue;
             const html = readFileSync(file, 'utf8');
+            if (!html.includes('/livewweb/docs/assets/')) {
+              missing.push(`${page} -> missing /livewweb/docs/assets/ base paths`);
+              continue;
+            }
             for (const match of html.matchAll(assetRe)) {
-              const rel = match[1].replace(/^\//, '');
+              let rel = match[1].replace(/^\/livewweb\/docs\//, '').replace(/^\//, '');
               if (!existsSync(join('dist', rel))) missing.push(`${page} -> ${rel}`);
             }
           }
@@ -105,7 +109,9 @@ jobs:
           git commit -m "deploy: GitHub Pages static build [skip ci]"
           git push
 
-      - name: Point GitHub Pages at main/docs
+      # Serve full repo (index.html redirects + docs/ production build).
+      # Canonical dashboard: /livewweb/docs/dashboard.html
+      - name: Point GitHub Pages at repo root
         run: |
           code=$(curl -s -o /tmp/pages.json -w "%{http_code}" \
             -X PUT \
@@ -113,7 +119,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${{ github.repository }}/pages" \
-            -d '{"build_type":"legacy","source":{"branch":"main","path":"/docs"}}')
+            -d '{"build_type":"legacy","source":{"branch":"main","path":"/"}}')
           echo "Pages configure HTTP $code"
           cat /tmp/pages.json
 
