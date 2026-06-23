@@ -61,5 +61,12 @@ export function tuneMapLayersForStaticMirror(base: MapLayers): MapLayers {
     dayNight: false,
     flights: false,
     military: false,
+    ais: false,
+    natural: false,
+    cables: false,
+    protests: false,
+    cyberThreats: false,
+    displacement: false,
+    gpsJamming: false,
   };
 }

@@ -1,4 +1,5 @@
 import { isForkUnlockAll } from '@/config/fork-unlock';
+import { isStaticWebMirror } from '@/services/static-mirror';
 import { isDesktopRuntime } from '../services/runtime';
 import { invokeTauri } from '../services/tauri-bridge';
 import { t } from '../services/i18n';
@@ -338,7 +339,10 @@ export class Panel {
     this.restoreSavedColSpan();
     this.reconcileColSpanAfterAttach();
 
-    this.showLoading();
+    // GitHub Pages: skip the radar loader on every panel — background prime fills content.
+    if (!isStaticWebMirror()) {
+      this.showLoading();
+    }
   }
 
   private restoreSavedColSpan(): void {

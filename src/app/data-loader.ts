@@ -319,8 +319,8 @@ export class DataLoaderManager implements AppModule {
   private readonly perFeedFallbackIntelFeedLimit = 6;
   private readonly staticMirrorCategoryFeedLimit = 2;
   private readonly staticMirrorIntelFeedLimit = 3;
-  private readonly staticMirrorLiveCategoryFeedLimit = 8;
-  private readonly staticMirrorLiveIntelFeedLimit = 10;
+  private readonly staticMirrorLiveCategoryFeedLimit = 6;
+  private readonly staticMirrorLiveIntelFeedLimit = 8;
   private readonly perFeedFallbackBatchSize = 2;
   private readonly staticMirrorDigestMinCategories = 8;
 

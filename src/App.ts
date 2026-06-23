@@ -89,8 +89,12 @@ import { ensureWmSession, installWmSessionFetchInterceptor } from '@/services/wm
 import { FORK_HOT_REFRESH_MS } from '@/config/fork-refresh';
 import { invalidateServerInsightsCache } from '@/services/insights-loader';
 import { isStaticWebMirror, shouldShowAuthUi } from '@/services/static-mirror';
-import { deferStaticMirrorIdleWork, shouldRunHealthFreshnessRefresh } from '@/services/static-mirror-performance';
-import { shouldPrimeForkPanel } from '@/services/fork-panel-prime';
+import {
+  deferStaticMirrorIdleWork,
+  runStaggeredForkTasks,
+  shouldRunHealthFreshnessRefresh,
+} from '@/services/static-mirror-performance';
+import { shouldPrimeForkPanel, shouldPrimeForkPanelInBackground } from '@/services/fork-panel-prime';
 import { applyForkPanelBoost, tuneMapLayersForStaticMirror } from '@/config/fork-defaults';
 import { resolveShellDocumentTitle } from '@/config/site-branding';
 
@@ -173,6 +177,8 @@ export class App {
   // duplicate registrations.
   private webMcpController: AbortController | null = null;
   private visiblePanelPrimed = new Set<string>();
+  private forkBackgroundPrimed = new Set<string>();
+  private forkBackgroundPrimeScheduled = false;
   private visiblePanelPrimeRaf: number | null = null;
   private followedCountriesCapDropToastTimer: number | null = null;
   private bootstrapHydrationState: BootstrapHydrationState = getBootstrapHydrationState();
@@ -367,78 +373,98 @@ export class App {
   }
 
   private async primeVisiblePanelData(forceAll = false): Promise<void> {
-    const tasks: Promise<unknown>[] = [];
-    const primeTask = (key: string, task: () => Promise<unknown>): void => {
-      if (this.visiblePanelPrimed.has(key) || this.state.inFlight.has(key)) return;
-      const wrapped = (async () => {
+    const primeTask = (
+      key: string,
+      task: () => Promise<unknown>,
+      panelId: string = key,
+    ): void => {
+      if (this.visiblePanelPrimed.has(key) || this.forkBackgroundPrimed.has(key) || this.state.inFlight.has(key)) {
+        return;
+      }
+      const wrapped = async () => {
         this.state.inFlight.add(key);
         try {
           await task();
           this.visiblePanelPrimed.add(key);
+          this.forkBackgroundPrimed.add(key);
         } finally {
           this.state.inFlight.delete(key);
         }
-      })();
-      tasks.push(wrapped);
+      };
+      queuePrime(panelId, wrapped);
     };
 
+    const nearViewport = (id: string): boolean => this.isPanelNearViewport(id);
     const shouldPrime = (id: string): boolean =>
-      shouldPrimeForkPanel(id, this.state.panelSettings, this.isPanelNearViewport(id), forceAll);
+      shouldPrimeForkPanel(id, this.state.panelSettings, nearViewport(id), forceAll);
+    const shouldPrimeBackground = (id: string): boolean =>
+      shouldPrimeForkPanelInBackground(id, this.state.panelSettings, nearViewport(id), forceAll);
+    const wantPrime = (id: string): boolean => shouldPrime(id) || shouldPrimeBackground(id);
     const shouldPrimeAny = (ids: string[]): boolean =>
-      forceAll || ids.some((id) => shouldPrime(id));
+      forceAll || ids.some((id) => wantPrime(id));
 
-    if (shouldPrime('service-status')) {
+    const priorityTasks: Array<() => Promise<unknown>> = [];
+    const backgroundTasks: Array<() => Promise<unknown>> = [];
+    const queuePrime = (id: string, task: () => Promise<unknown>): void => {
+      if (shouldPrime(id)) {
+        priorityTasks.push(task);
+      } else if (shouldPrimeBackground(id)) {
+        backgroundTasks.push(task);
+      }
+    };
+
+    if (wantPrime('service-status')) {
       const panel = this.state.panels['service-status'] as ServiceStatusPanel | undefined;
       if (panel) primeTask('service-status', () => panel.fetchStatus());
     }
-    if (shouldPrime('macro-signals')) {
+    if (wantPrime('macro-signals')) {
       const panel = this.state.panels['macro-signals'] as MacroSignalsPanel | undefined;
       if (panel) primeTask('macro-signals', () => panel.fetchData());
     }
-    if (shouldPrime('fear-greed')) {
+    if (wantPrime('fear-greed')) {
       const panel = this.state.panels['fear-greed'] as FearGreedPanel | undefined;
       if (panel) primeTask('fear-greed', () => panel.fetchData());
     }
-    if (shouldPrime('hormuz-tracker')) {
+    if (wantPrime('hormuz-tracker')) {
       const panel = this.state.panels['hormuz-tracker'] as HormuzPanel | undefined;
       if (panel) primeTask('hormuz-tracker', () => panel.fetchData());
     }
-    if (shouldPrime('etf-flows')) {
+    if (wantPrime('etf-flows')) {
       const panel = this.state.panels['etf-flows'] as ETFFlowsPanel | undefined;
       if (panel) primeTask('etf-flows', () => panel.fetchData());
     }
-    if (shouldPrime('stablecoins')) {
+    if (wantPrime('stablecoins')) {
       const panel = this.state.panels.stablecoins as StablecoinPanel | undefined;
       if (panel) primeTask('stablecoins', () => panel.fetchData());
     }
-    if (shouldPrime('energy-crisis')) {
+    if (wantPrime('energy-crisis')) {
       const panel = this.state.panels['energy-crisis'] as EnergyCrisisPanel | undefined;
       if (panel) primeTask('energy-crisis', () => panel.fetchData());
     }
-    if (shouldPrime('telegram-intel')) {
+    if (wantPrime('telegram-intel')) {
       primeTask('telegram-intel', () => this.dataLoader.loadTelegramIntel());
     }
-    if (shouldPrime('gulf-economies')) {
+    if (wantPrime('gulf-economies')) {
       const panel = this.state.panels['gulf-economies'] as GulfEconomiesPanel | undefined;
       if (panel) primeTask('gulf-economies', () => panel.fetchData());
     }
-    if (shouldPrime('grocery-basket')) {
+    if (wantPrime('grocery-basket')) {
       const panel = this.state.panels['grocery-basket'] as GroceryBasketPanel | undefined;
       if (panel) primeTask('grocery-basket', () => panel.fetchData());
     }
-    if (shouldPrime('bigmac')) {
+    if (wantPrime('bigmac')) {
       const panel = this.state.panels['bigmac'] as BigMacPanel | undefined;
       if (panel) primeTask('bigmac', () => panel.fetchData());
     }
-    if (shouldPrime('fuel-prices')) {
+    if (wantPrime('fuel-prices')) {
       const panel = this.state.panels['fuel-prices'] as FuelPricesPanel | undefined;
       if (panel) primeTask('fuel-prices', () => panel.fetchData());
     }
-    if (shouldPrime('fao-food-price-index')) {
+    if (wantPrime('fao-food-price-index')) {
       const panel = this.state.panels['fao-food-price-index'] as FaoFoodPriceIndexPanel | undefined;
       if (panel) primeTask('fao-food-price-index', () => panel.fetchData());
     }
-    if (shouldPrime('oil-inventories')) {
+    if (wantPrime('oil-inventories')) {
       const panel = this.state.panels['oil-inventories'] as OilInventoriesPanel | undefined;
       if (panel) primeTask('oil-inventories', () => panel.fetchData());
     }
@@ -449,27 +475,27 @@ export class App {
     // Panel's constructor calls showLoading() but nothing else triggers
     // fetchData() on attach — App.ts's primeTask table is the sole
     // near-viewport kickoff path.
-    if (shouldPrime('pipeline-status')) {
+    if (wantPrime('pipeline-status')) {
       const panel = this.state.panels['pipeline-status'] as PipelineStatusPanel | undefined;
       if (panel) primeTask('pipeline-status', () => panel.fetchData());
     }
-    if (shouldPrime('storage-facility-map')) {
+    if (wantPrime('storage-facility-map')) {
       const panel = this.state.panels['storage-facility-map'] as StorageFacilityMapPanel | undefined;
       if (panel) primeTask('storage-facility-map', () => panel.fetchData());
     }
-    if (shouldPrime('fuel-shortages')) {
+    if (wantPrime('fuel-shortages')) {
       const panel = this.state.panels['fuel-shortages'] as FuelShortagePanel | undefined;
       if (panel) primeTask('fuel-shortages', () => panel.fetchData());
     }
-    if (shouldPrime('energy-disruptions')) {
+    if (wantPrime('energy-disruptions')) {
       const panel = this.state.panels['energy-disruptions'] as EnergyDisruptionsPanel | undefined;
       if (panel) primeTask('energy-disruptions', () => panel.fetchData());
     }
-    if (shouldPrime('energy-risk-overview')) {
+    if (wantPrime('energy-risk-overview')) {
       const panel = this.state.panels['energy-risk-overview'] as EnergyRiskOverviewPanel | undefined;
       if (panel) primeTask('energy-risk-overview', () => panel.fetchData());
     }
-    if (shouldPrime('chokepoint-strip')) {
+    if (wantPrime('chokepoint-strip')) {
       // Without this primeTask entry the panel mounts via panel-layout.ts and
       // ENERGY_PANELS but its constructor only calls showLoading() — fetchData()
       // never fires, so the panel sits at "Loading..." forever. Hard-learned in
@@ -477,110 +503,125 @@ export class App {
       const panel = this.state.panels['chokepoint-strip'] as ChokepointStripPanel | undefined;
       if (panel) primeTask('chokepoint-strip', () => panel.fetchData());
     }
-    if (shouldPrime('climate-news')) {
+    if (wantPrime('climate-news')) {
       const panel = this.state.panels['climate-news'] as ClimateNewsPanel | undefined;
       if (panel) primeTask('climate-news', () => panel.fetchData());
     }
-    if (shouldPrime('consumer-prices')) {
+    if (wantPrime('consumer-prices')) {
       const panel = this.state.panels['consumer-prices'] as ConsumerPricesPanel | undefined;
       if (panel) primeTask('consumer-prices', () => panel.fetchData());
     }
-    if (shouldPrime('defense-patents')) {
+    if (wantPrime('defense-patents')) {
       const panel = this.state.panels['defense-patents'] as DefensePatentsPanel | undefined;
       if (panel) primeTask('defense-patents', () => { panel.refresh(); return Promise.resolve(); });
     }
-    if (shouldPrime('macro-tiles')) {
+    if (wantPrime('macro-tiles')) {
       const panel = this.state.panels['macro-tiles'] as MacroTilesPanel | undefined;
       if (panel) primeTask('macro-tiles', () => panel.fetchData());
     }
-    if (shouldPrime('fsi')) {
+    if (wantPrime('fsi')) {
       const panel = this.state.panels['fsi'] as FSIPanel | undefined;
       if (panel) primeTask('fsi', () => panel.fetchData());
     }
-    if (shouldPrime('yield-curve')) {
+    if (wantPrime('yield-curve')) {
       const panel = this.state.panels['yield-curve'] as YieldCurvePanel | undefined;
       if (panel) primeTask('yield-curve', () => panel.fetchData());
     }
-    if (shouldPrime('earnings-calendar')) {
+    if (wantPrime('earnings-calendar')) {
       const panel = this.state.panels['earnings-calendar'] as EarningsCalendarPanel | undefined;
       if (panel) primeTask('earnings-calendar', () => panel.fetchData());
     }
-    if (shouldPrime('economic-calendar')) {
+    if (wantPrime('economic-calendar')) {
       const panel = this.state.panels['economic-calendar'] as EconomicCalendarPanel | undefined;
       if (panel) primeTask('economic-calendar', () => panel.fetchData());
     }
-    if (shouldPrime('cot-positioning')) {
+    if (wantPrime('cot-positioning')) {
       const panel = this.state.panels['cot-positioning'] as CotPositioningPanel | undefined;
       if (panel) primeTask('cot-positioning', () => panel.fetchData());
     }
-    if (shouldPrime('liquidity-shifts')) {
+    if (wantPrime('liquidity-shifts')) {
       const panel = this.state.panels['liquidity-shifts'] as LiquidityShiftsPanel | undefined;
       if (panel) primeTask('liquidity-shifts', () => panel.fetchData());
     }
-    if (shouldPrime('positioning-247')) {
+    if (wantPrime('positioning-247')) {
       const panel = this.state.panels['positioning-247'] as PositioningPanel | undefined;
       if (panel) primeTask('positioning-247', () => panel.fetchData());
     }
-    if (shouldPrime('gold-intelligence')) {
+    if (wantPrime('gold-intelligence')) {
       const panel = this.state.panels['gold-intelligence'] as GoldIntelligencePanel | undefined;
       if (panel) primeTask('gold-intelligence', () => panel.fetchData());
     }
-    if (shouldPrime('aaii-sentiment')) {
-      primeTask('aaiiSentiment', () => this.dataLoader.loadAaiiSentiment());
+    if (wantPrime('aaii-sentiment')) {
+      primeTask('aaiiSentiment', () => this.dataLoader.loadAaiiSentiment(), 'aaii-sentiment');
     }
-    if (shouldPrime('market-breadth')) {
-      primeTask('marketBreadth', () => this.dataLoader.loadMarketBreadth());
+    if (wantPrime('market-breadth')) {
+      primeTask('marketBreadth', () => this.dataLoader.loadMarketBreadth(), 'market-breadth');
     }
     if (shouldPrimeAny(['markets', 'heatmap', 'commodities', 'crypto', 'energy-complex'])) {
-      primeTask('markets', () => this.dataLoader.loadMarkets());
+      primeTask('markets', () => this.dataLoader.loadMarkets(), 'markets');
     }
-    if (shouldPrime('polymarket')) {
-      primeTask('predictions', () => this.dataLoader.loadPredictions());
+    if (wantPrime('polymarket')) {
+      primeTask('predictions', () => this.dataLoader.loadPredictions(), 'polymarket');
     }
-    if (shouldPrime('economic')) {
-      primeTask('fred', () => this.dataLoader.loadFredData());
-      primeTask('spending', () => this.dataLoader.loadGovernmentSpending());
-      primeTask('bis', () => this.dataLoader.loadBisData());
+    if (wantPrime('economic')) {
+      primeTask('fred', () => this.dataLoader.loadFredData(), 'economic');
+      primeTask('spending', () => this.dataLoader.loadGovernmentSpending(), 'economic');
+      primeTask('bis', () => this.dataLoader.loadBisData(), 'economic');
     }
-    if (shouldPrime('energy-complex')) {
-      primeTask('oil', () => this.dataLoader.loadOilAnalytics());
+    if (wantPrime('energy-complex')) {
+      primeTask('oil', () => this.dataLoader.loadOilAnalytics(), 'energy-complex');
     }
     // trade-policy moved into the _wmAccess block below — see fix for
     // anonymous 401 bug where loadTradePolicy fired 6 PRO-gated RPCs
     // unconditionally on every page load.
-    if (shouldPrime('supply-chain')) {
-      primeTask('supplyChain', () => this.dataLoader.loadSupplyChain());
+    if (wantPrime('supply-chain')) {
+      primeTask('supplyChain', () => this.dataLoader.loadSupplyChain(), 'supply-chain');
     }
-    if (shouldPrime('cross-source-signals')) {
-      primeTask('crossSourceSignals', () => this.dataLoader.loadCrossSourceSignals());
+    if (wantPrime('cross-source-signals')) {
+      primeTask('crossSourceSignals', () => this.dataLoader.loadCrossSourceSignals(), 'cross-source-signals');
     }
 
     const _wmAccess = hasPremiumAccess();
     if (_wmAccess) {
-      if (shouldPrime('trade-policy')) {
-        primeTask('tradePolicy', () => this.dataLoader.loadTradePolicy());
+      if (wantPrime('trade-policy')) {
+        primeTask('tradePolicy', () => this.dataLoader.loadTradePolicy(), 'trade-policy');
       }
-      if (shouldPrime('stock-analysis')) {
-        primeTask('stockAnalysis', () => this.dataLoader.loadStockAnalysis());
+      if (wantPrime('stock-analysis')) {
+        primeTask('stockAnalysis', () => this.dataLoader.loadStockAnalysis(), 'stock-analysis');
       }
-      if (shouldPrime('stock-backtest')) {
-        primeTask('stockBacktest', () => this.dataLoader.loadStockBacktest());
+      if (wantPrime('stock-backtest')) {
+        primeTask('stockBacktest', () => this.dataLoader.loadStockBacktest(), 'stock-backtest');
       }
-      if (shouldPrime('daily-market-brief')) {
-        primeTask('dailyMarketBrief', () => this.dataLoader.loadDailyMarketBrief());
+      if (wantPrime('daily-market-brief')) {
+        primeTask('dailyMarketBrief', () => this.dataLoader.loadDailyMarketBrief(), 'daily-market-brief');
       }
-      if (shouldPrime('market-implications')) {
-        primeTask('marketImplications', () => this.dataLoader.loadMarketImplications());
+      if (wantPrime('market-implications')) {
+        primeTask('marketImplications', () => this.dataLoader.loadMarketImplications(), 'market-implications');
       }
-      if (shouldPrime('wsb-ticker-scanner')) {
+      if (wantPrime('wsb-ticker-scanner')) {
         const panel = this.state.panels['wsb-ticker-scanner'] as WsbTickerScannerPanel | undefined;
         if (panel) primeTask('wsb-ticker-scanner', () => panel.fetchData());
       }
     }
 
-    if (tasks.length > 0) {
-      await Promise.allSettled(tasks);
+    if (priorityTasks.length > 0) {
+      await Promise.allSettled(priorityTasks.map((task) => task()));
     }
+    if (backgroundTasks.length > 0 && isStaticWebMirror()) {
+      this.scheduleForkBackgroundPanelPrime(backgroundTasks);
+    } else if (backgroundTasks.length > 0) {
+      await runStaggeredForkTasks(backgroundTasks);
+    }
+  }
+
+  /** Idle-time staggered fetch for enabled panels below the fold (GitHub Pages). */
+  private scheduleForkBackgroundPanelPrime(tasks: Array<() => Promise<unknown>>): void {
+    if (this.forkBackgroundPrimeScheduled) return;
+    this.forkBackgroundPrimeScheduled = true;
+    deferStaticMirrorIdleWork(async () => {
+      await runStaggeredForkTasks(tasks);
+      this.forkBackgroundPrimeScheduled = false;
+    });
   }
 
   constructor(containerId: string) {
@@ -1430,7 +1471,11 @@ export class App {
       runCorrelationEngine();
     }
 
-    startLearning();
+    if (isStaticWebMirror()) {
+      deferStaticMirrorIdleWork(startLearning);
+    } else {
+      startLearning();
+    }
 
     // Hide unconfigured layers after first data load
     if (!isAisConfigured()) {
