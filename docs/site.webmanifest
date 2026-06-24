@@ -6,8 +6,8 @@
   "scope": "/livewweb/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#0a0f0a",
-  "background_color": "#0a0f0a",
+  "theme_color": "#030304",
+  "background_color": "#030304",
   "categories": [
     "news",
     "productivity"

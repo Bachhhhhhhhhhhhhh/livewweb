@@ -1,5 +1,6 @@
 import './styles/base-layer.css';
 import './styles/happy-theme.css';
+import './styles/vision-intense-theme.css';
 import { enqueueSentryCall, installPreInitErrorQueue, scheduleSentryInit } from '@/bootstrap/sentry-defer';
 import { inject } from '@vercel/analytics';
 import { App } from './App';
@@ -288,6 +289,11 @@ loadDesktopSecrets().catch(() => {});
 // Apply stored theme preference before app initialization (safety net for inline script)
 applyStoredTheme();
 applyFont();
+
+// Crisis-room visual theme for the GitHub Pages fork
+if (isStaticWebMirror()) {
+  document.documentElement.dataset.visionIntense = '1';
+}
 
 // Set data-variant on <html> so CSS theme overrides activate
 if (SITE_VARIANT && SITE_VARIANT !== 'full') {

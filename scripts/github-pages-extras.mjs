@@ -15,8 +15,9 @@ const favicoSrc = join(docs, 'favico');
 const SITE_NAME = 'The Vision of World';
 const SITE_NAME_UPPER = 'THE VISION OF WORLD';
 const DASHBOARD = '/livewweb/docs/dashboard.html';
-const THEME = '#0a0f0a';
-const ACCENT = '#34d399';
+const THEME = '#030304';
+const ACCENT = '#ff2a3a';
+const ACCENT_GLOW = 'rgba(255, 42, 58, 0.55)';
 
 function faviconHead(prefix) {
   return [
@@ -43,26 +44,30 @@ ${faviconHead(prefix)}
   <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-      background:radial-gradient(ellipse 80% 60% at 50% 0%,#0f2a22 0%,${THEME} 55%);
-      color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-    .card{text-align:center;padding:2.5rem 2rem;max-width:22rem}
-    .badge{display:inline-block;font-size:.65rem;letter-spacing:.28em;font-weight:700;
-      color:${ACCENT};border:1px solid rgba(52,211,153,.35);border-radius:999px;
-      padding:.35rem .85rem;margin-bottom:1rem}
-    h1{font-size:1.35rem;font-weight:600;letter-spacing:.04em;margin:0 0 .5rem;line-height:1.3}
-    .sub{color:#9ca3af;font-size:.875rem;margin:0 0 1.25rem;line-height:1.5}
-    .pulse{width:10px;height:10px;border-radius:50%;background:${ACCENT};
-      margin:0 auto 1.25rem;box-shadow:0 0 12px rgba(52,211,153,.6);
-      animation:vip-pulse 1.4s ease-in-out infinite}
-    @keyframes vip-pulse{0%,100%{opacity:.35;transform:scale(.9)}50%{opacity:1;transform:scale(1.15)}}
-    a{color:${ACCENT};text-decoration:none;font-size:.875rem;font-weight:500}
-    a:hover{text-decoration:underline}
+      background:radial-gradient(ellipse 100% 70% at 50% -10%,rgba(120,0,30,.45) 0%,${THEME} 60%);
+      color:#f0e0e4;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;position:relative}
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.6) 2px,rgba(0,0,0,.6) 4px)}
+    .card{text-align:center;padding:2.5rem 2rem;max-width:24rem;position:relative;z-index:1}
+    .badge{display:inline-block;font-size:.6rem;letter-spacing:.32em;font-weight:800;
+      color:${ACCENT};border:1px solid ${ACCENT_GLOW};border-radius:2px;
+      padding:.4rem .9rem;margin-bottom:1rem;text-transform:uppercase;
+      box-shadow:0 0 16px ${ACCENT_GLOW}}
+    h1{font-size:1.4rem;font-weight:700;letter-spacing:.12em;margin:0 0 .5rem;line-height:1.3;
+      color:#ff3b4a;text-shadow:0 0 20px ${ACCENT_GLOW}}
+    .sub{color:#a08088;font-size:.8rem;margin:0 0 1.25rem;line-height:1.5;letter-spacing:.04em}
+    .pulse{width:12px;height:12px;border-radius:50%;background:${ACCENT};
+      margin:0 auto 1.25rem;box-shadow:0 0 16px ${ACCENT_GLOW},0 0 32px rgba(255,0,40,.3);
+      animation:vip-pulse 1s ease-in-out infinite}
+    @keyframes vip-pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.2)}}
+    a{color:${ACCENT};text-decoration:none;font-size:.8rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+    a:hover{text-shadow:0 0 8px ${ACCENT_GLOW}}
   </style>
   <script>location.replace("${dest}" + location.search + location.hash);</script>
 </head>
 <body>
   <div class="card">
-    <div class="badge">GLOBAL INTELLIGENCE</div>
+    <div class="badge">⚠ THREAT MATRIX ACTIVE</div>
     <h1>${SITE_NAME_UPPER}</h1>
     <p class="sub">${subtitle}</p>
     <div class="pulse" aria-hidden="true"></div>
@@ -122,7 +127,7 @@ export function applyGitHubPagesExtras({ docsDir = docs, repoRoot = root } = {})
     title: SITE_NAME,
     dest: './dashboard.html',
     prefix: './',
-    subtitle: 'Opening real-time intelligence dashboard…',
+    subtitle: 'Initializing global crisis intelligence…',
   });
   writeFileSync(join(docsDir, 'index.html'), docsShell);
   writeFileSync(join(docsDir, '404.html'), docsShell);
@@ -131,7 +136,7 @@ export function applyGitHubPagesExtras({ docsDir = docs, repoRoot = root } = {})
     title: SITE_NAME,
     dest: DASHBOARD,
     prefix: '/livewweb/',
-    subtitle: 'Opening real-time intelligence dashboard…',
+    subtitle: 'Initializing global crisis intelligence…',
   });
   writeFileSync(join(repoRoot, 'index.html'), rootShell);
   writeFileSync(join(repoRoot, '404.html'), rootShell);

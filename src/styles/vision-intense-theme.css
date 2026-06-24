@@ -1,0 +1,232 @@
+/**
+ * The Vision of World — intense crisis-room aesthetic (GitHub Pages fork).
+ * Unlayered: overrides base theme via [data-vision-intense] on <html>.
+ */
+
+[data-vision-intense='1'] {
+  --bg: #030304;
+  --bg-secondary: #08080c;
+  --surface: #0c0c12;
+  --surface-hover: #14141f;
+  --surface-active: #1a1020;
+  --border: #2a1520;
+  --border-strong: #4a2030;
+  --border-subtle: #120a10;
+  --text: #f0e8e8;
+  --text-secondary: #c8b8b8;
+  --text-dim: #8a7078;
+  --accent: #ff3b3b;
+  --panel-bg: #0a0a10;
+  --panel-border: #3a1828;
+  --map-bg: #020104;
+  --map-grid: #1a0810;
+  --map-country: #0a0608;
+  --map-stroke: #4a1828;
+  --semantic-critical: #ff1a2e;
+  --semantic-high: #ff5c00;
+  --threat-critical: #ff0033;
+  --status-live: #ff4444;
+  --status-cached: #ff8800;
+  --green: #ff5544;
+  --red: #ff1a2e;
+  --scrollbar-thumb: #3a1828;
+  --scrollbar-thumb-hover: #5a2840;
+  --vision-glow: rgba(255, 40, 60, 0.45);
+  --vision-glow-soft: rgba(255, 60, 80, 0.12);
+}
+
+[data-vision-intense='1'] body {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(120, 0, 30, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 100%, rgba(80, 0, 20, 0.2) 0%, transparent 50%),
+    var(--bg);
+}
+
+[data-vision-intense='1'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.04;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.5) 2px,
+    rgba(0, 0, 0, 0.5) 4px
+  );
+}
+
+[data-vision-intense='1'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+[data-vision-intense='1'] .header {
+  background: linear-gradient(180deg, #120810 0%, #0a0608 100%);
+  border-bottom: 1px solid rgba(255, 40, 60, 0.35);
+  box-shadow: 0 0 24px rgba(255, 0, 40, 0.08), 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-vision-intense='1'] .logo {
+  color: #ff2a3a;
+  text-shadow:
+    0 0 8px rgba(255, 40, 60, 0.8),
+    0 0 20px rgba(255, 0, 40, 0.4);
+  animation: vision-logo-pulse 3s ease-in-out infinite;
+}
+
+[data-vision-intense='1'] .logo-mobile {
+  color: #ff2a3a;
+  text-shadow: 0 0 12px rgba(255, 40, 60, 0.6);
+}
+
+[data-vision-intense='1'] .header-clock {
+  color: #ff6b6b;
+  text-shadow: 0 0 6px rgba(255, 60, 80, 0.5);
+  font-weight: 600;
+}
+
+[data-vision-intense='1'] .status-dot {
+  background: #ff2a3a;
+  box-shadow: 0 0 8px rgba(255, 40, 60, 0.9);
+  animation: vision-status-pulse 1.2s ease-in-out infinite;
+}
+
+[data-vision-intense='1'] .map-section {
+  border-color: rgba(255, 40, 60, 0.25);
+  box-shadow:
+    inset 0 0 60px rgba(80, 0, 20, 0.15),
+    0 0 30px rgba(255, 0, 40, 0.06);
+}
+
+[data-vision-intense='1'] .map-section .panel-header {
+  background: linear-gradient(90deg, rgba(40, 0, 15, 0.6) 0%, transparent 100%);
+  border-bottom-color: rgba(255, 40, 60, 0.2);
+}
+
+[data-vision-intense='1'] .panel {
+  background: linear-gradient(165deg, #0e0a12 0%, #08080c 100%);
+  border-color: rgba(255, 40, 60, 0.15);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+[data-vision-intense='1'] .panel:hover {
+  border-color: rgba(255, 60, 80, 0.35);
+  box-shadow: 0 0 20px rgba(255, 0, 40, 0.08), 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+[data-vision-intense='1'] .panel-header {
+  background: linear-gradient(90deg, rgba(60, 0, 20, 0.35) 0%, rgba(255, 40, 60, 0.04) 100%);
+  border-bottom-color: rgba(255, 40, 60, 0.12);
+}
+
+[data-vision-intense='1'] .panel-title {
+  color: #e8d0d4;
+  letter-spacing: 1.2px;
+}
+
+[data-vision-intense='1'] .panel-severity-dot.severity-critical {
+  box-shadow: 0 0 10px #ff0033, 0 0 20px rgba(255, 0, 50, 0.6);
+  animation: vision-critical-pulse 0.5s ease-in-out infinite;
+}
+
+[data-vision-intense='1'] .panel-severity-dot.severity-high {
+  box-shadow: 0 0 8px #ff5c00, 0 0 16px rgba(255, 92, 0, 0.5);
+}
+
+[data-vision-intense='1'] .panel.has-new .panel-header {
+  background: linear-gradient(90deg, rgba(255, 0, 40, 0.2) 0%, rgba(255, 40, 60, 0.05) 100%);
+  border-bottom-color: rgba(255, 40, 60, 0.4);
+}
+
+[data-vision-intense='1'] .breaking-alert.severity-critical {
+  background: linear-gradient(90deg, #4a0008 0%, #8b0018 40%, #dc143c 100%);
+  border-bottom: 2px solid #ff1a2e;
+  box-shadow: 0 4px 24px rgba(255, 0, 40, 0.35);
+}
+
+[data-vision-intense='1'] .breaking-alert.severity-high {
+  background: linear-gradient(90deg, #3a1000 0%, #8b3000 50%, #c2410c 100%);
+  box-shadow: 0 4px 16px rgba(255, 92, 0, 0.25);
+}
+
+[data-vision-intense='1'] .breaking-alert.severity-critical .breaking-alert-level {
+  animation: vision-breaking-flash 0.6s ease-in-out infinite;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+[data-vision-intense='1'] .cached-mode-banner {
+  border-bottom-color: rgba(255, 136, 0, 0.4);
+  background: linear-gradient(180deg, rgba(255, 100, 0, 0.18), rgba(60, 20, 0, 0.12));
+}
+
+[data-vision-intense='1'] .cached-mode-banner--unavailable {
+  border-bottom-color: rgba(255, 26, 46, 0.5);
+  background: linear-gradient(180deg, rgba(255, 0, 40, 0.22), rgba(60, 0, 15, 0.15));
+  animation: vision-banner-warn 2s ease-in-out infinite;
+}
+
+[data-vision-intense='1'] .variant-option.active {
+  color: #ff5a5a;
+  background: rgba(255, 40, 60, 0.12);
+}
+
+[data-vision-intense='1'] .site-footer-name {
+  color: #ff4a5a;
+  text-shadow: 0 0 8px rgba(255, 40, 60, 0.4);
+  letter-spacing: 0.2em;
+}
+
+[data-vision-intense='1'] .critical-posture-banner.severity-critical {
+  background: linear-gradient(90deg, rgba(80, 0, 15, 0.9), rgba(180, 0, 30, 0.85));
+  border: 1px solid rgba(255, 40, 60, 0.5);
+  box-shadow: 0 0 30px rgba(255, 0, 40, 0.2);
+}
+
+[data-vision-intense='1'] ::selection {
+  background: rgba(255, 40, 60, 0.35);
+  color: #fff;
+}
+
+@keyframes vision-logo-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(255, 40, 60, 0.7), 0 0 20px rgba(255, 0, 40, 0.35); }
+  50% { text-shadow: 0 0 14px rgba(255, 60, 80, 1), 0 0 32px rgba(255, 0, 50, 0.55); }
+}
+
+@keyframes vision-status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px rgba(255, 40, 60, 0.9); }
+  50% { opacity: 0.7; transform: scale(1.15); box-shadow: 0 0 14px rgba(255, 60, 80, 1); }
+}
+
+@keyframes vision-critical-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.85; }
+}
+
+@keyframes vision-breaking-flash {
+  0%, 100% { opacity: 1; background: rgba(0, 0, 0, 0.35); }
+  50% { opacity: 0.85; background: rgba(255, 0, 40, 0.25); }
+}
+
+@keyframes vision-banner-warn {
+  0%, 100% { border-bottom-color: rgba(255, 26, 46, 0.45); }
+  50% { border-bottom-color: rgba(255, 60, 80, 0.75); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-vision-intense='1'] .logo,
+  [data-vision-intense='1'] .status-dot,
+  [data-vision-intense='1'] .panel-severity-dot.severity-critical,
+  [data-vision-intense='1'] .breaking-alert.severity-critical .breaking-alert-level,
+  [data-vision-intense='1'] .cached-mode-banner--unavailable {
+    animation: none;
+  }
+}
