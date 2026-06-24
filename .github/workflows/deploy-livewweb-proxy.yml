@@ -17,7 +17,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}
@@ -34,8 +33,16 @@ jobs:
       - name: Install wrangler
         run: npm install --no-audit --no-fund
 
+      - name: Verify Cloudflare secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — skipping worker deploy"
+            exit 0
+          fi
+
       - name: Deploy Cloudflare Worker
         id: deploy
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -48,3 +55,13 @@ jobs:
           fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Proxy URL: $url"
+
+      - name: Health check deployed proxy
+        if: steps.deploy.outcome == 'success'
+        run: |
+          url="${{ steps.deploy.outputs.url }}"
+          code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 15 "${url}/api/health" || echo "000")
+          echo "Health check: HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::Proxy health check failed ($code) — site will use baked seed until fixed"
+          fi
