@@ -1,5 +1,15 @@
 import { FORK_LIVE_API_URL } from '@/config/fork-api';
-import { hasStaticMirrorLiveApi, isStaticWebMirror } from '@/services/static-mirror';
+
+/** Inline mirror checks — avoids circular import with static-mirror.ts */
+function isStaticMirrorHost(): boolean {
+  if (import.meta.env.VITE_STATIC_MIRROR === '1') return true;
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname.endsWith('.github.io');
+}
+
+function hasConfiguredLiveApi(): boolean {
+  return (import.meta.env.VITE_WS_API_URL?.length ?? 0) > 0;
+}
 
 const PROBE_TTL_MS = 5 * 60 * 1000;
 const PROBE_TIMEOUT_MS = 2_500;
@@ -15,7 +25,7 @@ function getProbeUrl(): string {
 
 /** Cached reachability — false until the first probe completes on static mirror. */
 export function isLiveApiReachable(): boolean {
-  if (!isStaticWebMirror() || !hasStaticMirrorLiveApi()) return false;
+  if (!isStaticMirrorHost() || !hasConfiguredLiveApi()) return false;
   return liveApiReachable === true;
 }
 
@@ -27,7 +37,7 @@ export function invalidateLiveApiProbe(): void {
 
 /** HEAD-ish health check against the Cloudflare Worker proxy (fast, no body). */
 export async function probeLiveApiReachable(force = false): Promise<boolean> {
-  if (!isStaticWebMirror() || !hasStaticMirrorLiveApi()) {
+  if (!isStaticMirrorHost() || !hasConfiguredLiveApi()) {
     liveApiReachable = false;
     return false;
   }
