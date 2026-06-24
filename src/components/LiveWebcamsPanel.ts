@@ -108,6 +108,7 @@ export class LiveWebcamsPanel extends Panel {
   private iframes: HTMLIFrameElement[] = [];
   private iframeTrackers = new Map<HTMLIFrameElement, WebcamIframeTracker>();
   private observer: IntersectionObserver | null = null;
+  private collapseObserver: MutationObserver | null = null;
   private isVisible = false;
   // Stream lifecycle
   private idleTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -137,6 +138,7 @@ export class LiveWebcamsPanel extends Panel {
     this.createFullscreenButton();
     this.createToolbar();
     this.setupIntersectionObserver();
+    this.setupCollapseObserver();
     this.setupIdleDetection();
     subscribeStreamQualityChange(() => this.render());
     this.unsubscribeStreamSettings = subscribeLiveStreamsSettingsChange((alwaysOn) => {
@@ -145,7 +147,6 @@ export class LiveWebcamsPanel extends Panel {
     });
     this.boundEmbedMessageHandler = (e) => this.handleEmbedMessage(e);
     window.addEventListener('message', this.boundEmbedMessageHandler);
-    this.render();
     document.addEventListener('keydown', this.boundFullscreenEscHandler);
   }
 
@@ -483,8 +484,11 @@ export class LiveWebcamsPanel extends Panel {
   private render(): void {
     this.destroyIframes();
 
-    if (!this.isVisible || this.isIdle) {
-      setTrustedHtml(this.content, trustedHtml(`<div class="webcam-placeholder">${escapeHtml(t('components.webcams.paused'))}</div>`, "legacy direct innerHTML migration"));
+    if (!this.shouldRenderStreams()) {
+      const message = this.isIdle
+        ? t('components.webcams.pausedIdle')
+        : t('components.webcams.paused');
+      setTrustedHtml(this.content, trustedHtml(`<div class="webcam-placeholder">${escapeHtml(message)}</div>`, "legacy direct innerHTML migration"));
       return;
     }
 
@@ -620,20 +624,58 @@ export class LiveWebcamsPanel extends Panel {
     this.iframes = [];
   }
 
+  private isPanelExpanded(): boolean {
+    return !this.element.classList.contains('panel-collapsed');
+  }
+
+  private shouldRenderStreams(): boolean {
+    return this.isVisible && this.isPanelExpanded() && !this.isIdle;
+  }
+
+  private applyVisibilityChange(visible: boolean): void {
+    const wasVisible = this.isVisible;
+    this.isVisible = visible;
+    if (this.shouldRenderStreams() && (!wasVisible || !this.iframes.length)) {
+      this.render();
+      return;
+    }
+    if (!this.isVisible && wasVisible) {
+      this.destroyIframes();
+      if (!this.isIdle) {
+        setTrustedHtml(this.content, trustedHtml(`<div class="webcam-placeholder">${escapeHtml(t('components.webcams.paused'))}</div>`, "legacy direct innerHTML migration"));
+      }
+    }
+  }
+
   private setupIntersectionObserver(): void {
+    // Don't wait for the async IO callback when the panel is already on screen.
+    try {
+      const rect = this.element.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight) {
+        this.isVisible = true;
+      }
+    } catch { /* ignore */ }
+
     this.observer = new IntersectionObserver(
-      (entries) => {
-        const wasVisible = this.isVisible;
-        this.isVisible = entries.some(e => e.isIntersecting);
-        if (this.isVisible && !wasVisible && !this.isIdle) {
-          this.render();
-        } else if (!this.isVisible && wasVisible) {
-          this.destroyIframes();
-        }
-      },
-      { threshold: 0.1 }
+      (entries) => this.applyVisibilityChange(entries.some(e => e.isIntersecting)),
+      { threshold: 0.01, rootMargin: '80px' },
     );
     this.observer.observe(this.element);
+
+    if (this.shouldRenderStreams()) {
+      this.render();
+    }
+  }
+
+  private setupCollapseObserver(): void {
+    this.collapseObserver = new MutationObserver(() => {
+      if (this.shouldRenderStreams()) {
+        this.render();
+      } else if (!this.isPanelExpanded()) {
+        this.destroyIframes();
+      }
+    });
+    this.collapseObserver.observe(this.element, { attributes: true, attributeFilter: ['class'] });
   }
 
   private applyIdleMode(): void {
@@ -703,7 +745,7 @@ export class LiveWebcamsPanel extends Panel {
   }
 
   public refresh(): void {
-    if (this.isVisible && !this.isIdle) {
+    if (this.shouldRenderStreams()) {
       this.render();
     }
   }
@@ -721,6 +763,7 @@ export class LiveWebcamsPanel extends Panel {
     });
     if (this.isFullscreen) this.toggleFullscreen();
     this.observer?.disconnect();
+    this.collapseObserver?.disconnect();
     this.unsubscribeStreamSettings?.();
     this.unsubscribeStreamSettings = null;
     this.destroyIframes();

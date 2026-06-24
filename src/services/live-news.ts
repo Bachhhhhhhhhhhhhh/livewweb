@@ -1,4 +1,4 @@
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { toApiUrl } from '@/services/runtime';
 import { withBase } from '@/utils/app-base';
 
@@ -39,8 +39,27 @@ export async function fetchLiveVideoInfo(channelHandle: string): Promise<LiveVid
   }
 
   if (isStaticWebMirror()) {
+    if (shouldUseLiveApiFetch()) {
+      try {
+        const res = await fetch(toApiUrl(`/api/youtube/live?channel=${encodeURIComponent(channelHandle)}`));
+        if (res.ok) {
+          const data = await res.json();
+          const videoId = data.videoId || null;
+          const hlsUrl = data.hlsUrl || null;
+          liveVideoCache.set(channelHandle, { videoId, hlsUrl, timestamp: Date.now() });
+          return { videoId, hlsUrl };
+        }
+      } catch (error) {
+        console.warn(`[LiveNews] Live API fallback for ${channelHandle}:`, error);
+      }
+    }
+
     const baked = await loadBakedLiveChannels();
-    const info = baked[channelHandle] ?? { videoId: null, hlsUrl: null };
+    const bakedInfo = baked[channelHandle];
+    const info: LiveVideoInfo = {
+      videoId: bakedInfo?.videoId ?? null,
+      hlsUrl: bakedInfo?.hlsUrl ?? null,
+    };
     liveVideoCache.set(channelHandle, { ...info, timestamp: Date.now() });
     return info;
   }

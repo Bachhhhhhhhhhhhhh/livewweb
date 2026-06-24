@@ -5,8 +5,6 @@
  * pause streams after inactivity to reduce CPU/bandwidth.
  */
 
-import { isStaticWebMirror } from '@/services/static-mirror';
-
 const STORAGE_KEY_LIVE_STREAMS_ALWAYS_ON = 'wm-live-streams-always-on';
 const EVENT_NAME = 'wm-live-streams-settings-changed';
 
@@ -29,7 +27,8 @@ function writeBool(key: string, value: boolean): void {
 }
 
 export function getLiveStreamsAlwaysOn(): boolean {
-  const defaultAlwaysOn = isStaticWebMirror() ? false : true;
+  // Static mirror (GitHub Pages): streams on by default — eco idle pause confuses users.
+  const defaultAlwaysOn = true;
   return readBool(STORAGE_KEY_LIVE_STREAMS_ALWAYS_ON, defaultAlwaysOn);
 }
 

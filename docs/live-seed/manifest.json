@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-06-24T14:28:31.269Z",
+  "fetchedAt": "2026-06-24T15:04:05.554Z",
   "upstream": "https://api.worldmonitor.app",
   "fast": {
     "keys": 26,
@@ -16,7 +16,7 @@
       "variant": "full",
       "lang": "en",
       "categories": 16,
-      "items": 269
+      "items": 271
     },
     {
       "variant": "full",
@@ -28,13 +28,13 @@
       "variant": "tech",
       "lang": "en",
       "categories": 19,
-      "items": 175
+      "items": 177
     },
     {
       "variant": "tech",
       "lang": "vi",
       "categories": 19,
-      "items": 175
+      "items": 177
     },
     {
       "variant": "finance",
@@ -64,13 +64,13 @@
       "variant": "happy",
       "lang": "en",
       "categories": 5,
-      "items": 40
+      "items": 39
     },
     {
       "variant": "happy",
       "lang": "vi",
       "categories": 5,
-      "items": 40
+      "items": 39
     },
     {
       "variant": "energy",
@@ -88,13 +88,13 @@
       "variant": "commodity",
       "lang": "en",
       "categories": 11,
-      "items": 205
+      "items": 206
     },
     {
       "variant": "commodity",
       "lang": "vi",
       "categories": 11,
-      "items": 205
+      "items": 206
     }
   ],
   "liveChannels": 17,

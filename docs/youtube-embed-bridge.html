@@ -63,7 +63,8 @@
           }
         }, 500);
       }
-      function onYouTubeIframeAPIReady() {
+      // Must be global — YouTube iframe_api calls window.onYouTubeIframeAPIReady.
+      window.onYouTubeIframeAPIReady = function () {
         player = new YT.Player('player', {
           videoId: videoId,
           host: 'https://www.youtube.com',
@@ -95,7 +96,7 @@
             },
           },
         });
-      }
+      };
       overlay.addEventListener('click', function () {
         tryStorageAccess();
         if (player && player.playVideo) { player.playVideo(); player.unMute(); hideOverlay(); }
