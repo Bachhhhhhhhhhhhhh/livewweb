@@ -1,100 +1,100 @@
 {
-  "fetchedAt": "2026-06-23T10:25:43.263Z",
+  "fetchedAt": "2026-06-24T13:59:09.957Z",
   "upstream": "https://api.worldmonitor.app",
   "fast": {
-    "keys": 25,
-    "missing": [
-      "temporalAnomalies"
-    ]
+    "keys": 26,
+    "missing": []
   },
   "slow": {
-    "keys": 81,
-    "missing": []
+    "keys": 80,
+    "missing": [
+      "giving"
+    ]
   },
   "digests": [
     {
       "variant": "full",
       "lang": "en",
       "categories": 16,
-      "items": 261
+      "items": 269
     },
     {
       "variant": "full",
       "lang": "vi",
       "categories": 16,
-      "items": 262
+      "items": 271
     },
     {
       "variant": "tech",
       "lang": "en",
       "categories": 19,
-      "items": 158
+      "items": 175
     },
     {
       "variant": "tech",
       "lang": "vi",
       "categories": 19,
-      "items": 158
+      "items": 175
     },
     {
       "variant": "finance",
       "lang": "en",
       "categories": 14,
-      "items": 136
+      "items": 146
     },
     {
       "variant": "finance",
       "lang": "vi",
       "categories": 14,
-      "items": 136
+      "items": 146
     },
     {
       "variant": "world",
       "lang": "en",
       "categories": 16,
-      "items": 262
+      "items": 271
     },
     {
       "variant": "world",
       "lang": "vi",
       "categories": 16,
-      "items": 262
+      "items": 271
     },
     {
       "variant": "happy",
       "lang": "en",
       "categories": 5,
-      "items": 41
+      "items": 40
     },
     {
       "variant": "happy",
       "lang": "vi",
       "categories": 5,
-      "items": 41
+      "items": 40
     },
     {
       "variant": "energy",
       "lang": "en",
       "categories": 16,
-      "items": 262
+      "items": 271
     },
     {
       "variant": "energy",
       "lang": "vi",
       "categories": 16,
-      "items": 262
+      "items": 271
     },
     {
       "variant": "commodity",
       "lang": "en",
       "categories": 11,
-      "items": 196
+      "items": 205
     },
     {
       "variant": "commodity",
       "lang": "vi",
       "categories": 11,
-      "items": 196
+      "items": 205
     }
   ],
   "liveChannels": 17

@@ -94,6 +94,7 @@ import {
   runStaggeredForkTasks,
   shouldRunHealthFreshnessRefresh,
 } from '@/services/static-mirror-performance';
+import { probeLiveApiReachable } from '@/services/live-api-probe';
 import { shouldPrimeForkPanel, shouldPrimeForkPanelInBackground } from '@/services/fork-panel-prime';
 import { applyForkPanelBoost, tuneMapLayersForStaticMirror } from '@/config/fork-defaults';
 import { resolveShellDocumentTitle } from '@/config/site-branding';
@@ -198,6 +199,18 @@ export class App {
     });
   };
   private readonly handleConnectivityChange = (): void => {
+    if (isStaticWebMirror() && typeof navigator !== 'undefined' && navigator.onLine) {
+      void probeLiveApiReachable(true).then((reachable) => {
+        if (reachable) {
+          void fetchBootstrapData().then(() => {
+            this.bootstrapHydrationState = getBootstrapHydrationState();
+            this.updateConnectivityUi();
+            void this.dataLoader.loadAllData();
+            void this.primeVisiblePanelData();
+          });
+        }
+      });
+    }
     this.updateConnectivityUi();
   };
   private readonly handleFollowedCountriesCapDrop = (ev: Event): void => {
@@ -1177,6 +1190,11 @@ export class App {
       await ensureWmSession();
     }
 
+    // Probe Worker proxy before bootstrap — avoids 4s+ timeout when proxy is down.
+    if (isStaticWebMirror()) {
+      await probeLiveApiReachable();
+    }
+
     // Hydrate in-memory cache from bootstrap endpoint (before panels construct and fetch)
     await fetchBootstrapData();
     this.bootstrapHydrationState = getBootstrapHydrationState();
@@ -1444,12 +1462,8 @@ export class App {
     // panels currently above the fold. IntersectionObserver wiring in
     // panel-layout.ts plus handleViewportPrime above re-trigger
     // loadAllData() as below-fold panels enter the viewport. (#3990)
-    await this.dataLoader.loadAllData();
-    if (isStaticWebMirror()) {
-      deferStaticMirrorIdleWork(() => { void this.primeVisiblePanelData(); });
-    } else {
-      await this.primeVisiblePanelData();
-    }
+    const primePanels = this.primeVisiblePanelData();
+    await Promise.all([this.dataLoader.loadAllData(), primePanels]);
 
     // If bootstrap was served from cache but live data just loaded, promote the status indicator
     markBootstrapAsLive();

@@ -27,8 +27,8 @@ export function shouldRunHealthFreshnessRefresh(): boolean {
   return !isStaticWebMirror();
 }
 
-const FORK_PRIME_BATCH_SIZE = 2;
-const FORK_PRIME_BATCH_GAP_MS = 300;
+const FORK_PRIME_BATCH_SIZE = 3;
+const FORK_PRIME_BATCH_GAP_MS = 200;
 
 /** Run off-screen panel fetches in small batches so the main thread stays responsive. */
 export async function runStaggeredForkTasks(

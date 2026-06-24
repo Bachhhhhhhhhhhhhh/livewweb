@@ -1,7 +1,7 @@
 import { getPersistentCache, setPersistentCache } from '@/services/persistent-cache';
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
 import { getForkRefreshIntervalMs } from '@/config/fork-refresh';
-import { hasStaticMirrorLiveApi, isStaticWebMirror } from '@/services/static-mirror';
+import { shouldUseLiveApiFetch, isStaticWebMirror } from '@/services/static-mirror';
 import { withBase } from '@/utils/app-base';
 
 const hydrationCache = new Map<string, unknown>();
@@ -53,7 +53,7 @@ export async function fetchBootstrapKeys(
   options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<{ data: Record<string, unknown> }> {
   const keyList = Array.isArray(keys) ? keys : [keys];
-  if (isStaticWebMirror() && hasStaticMirrorLiveApi()) {
+  if (isStaticWebMirror() && shouldUseLiveApiFetch()) {
     try {
       const resp = await fetch(toApiUrl(`/api/bootstrap?keys=${keyList.join(',')}`), {
         signal: options?.signal ?? AbortSignal.timeout(options?.timeoutMs ?? 8_000),
@@ -162,11 +162,16 @@ function combineHydrationSources(states: BootstrapTierHydrationState[]): Bootstr
 const bakedSeedTierCache = new Map<'fast' | 'slow', Record<string, unknown> | null>();
 
 /** CI-baked bootstrap seed shipped with GitHub Pages builds. */
-async function loadBakedSeedTier(tier: 'fast' | 'slow'): Promise<Record<string, unknown> | null> {
+async function loadBakedSeedTier(
+  tier: 'fast' | 'slow',
+  options?: { bustCache?: boolean },
+): Promise<Record<string, unknown> | null> {
   if (!isStaticWebMirror()) return null;
-  if (bakedSeedTierCache.has(tier)) return bakedSeedTierCache.get(tier)!;
+  if (!options?.bustCache && bakedSeedTierCache.has(tier)) return bakedSeedTierCache.get(tier)!;
   try {
-    const resp = await fetch(withBase(`/live-seed/bootstrap-${tier}.json`));
+    const base = withBase(`/live-seed/bootstrap-${tier}.json`);
+    const url = options?.bustCache ? `${base}?t=${Date.now()}` : base;
+    const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) {
       bakedSeedTierCache.set(tier, null);
       return null;
@@ -180,6 +185,26 @@ async function loadBakedSeedTier(tier: 'fast' | 'slow'): Promise<Record<string, 
     bakedSeedTierCache.set(tier, null);
     return null;
   }
+}
+
+function clearBakedSeedTierCache(): void {
+  bakedSeedTierCache.clear();
+}
+
+async function hydrateFromBakedTiers(bustCache = false): Promise<{
+  fast: BootstrapTierHydrationState;
+  slow: BootstrapTierHydrationState;
+}> {
+  const now = Date.now();
+  const tiers = { fast: { ...EMPTY_TIER_STATE }, slow: { ...EMPTY_TIER_STATE } };
+  for (const tier of ['fast', 'slow'] as const) {
+    const baked = await loadBakedSeedTier(tier, bustCache ? { bustCache: true } : undefined);
+    if (baked) {
+      populateCache(baked);
+      tiers[tier] = { source: 'cached', updatedAt: now };
+    }
+  }
+  return tiers;
 }
 
 async function fetchTier(tier: 'fast' | 'slow', signal: AbortSignal): Promise<BootstrapTierHydrationState> {
@@ -258,6 +283,19 @@ export async function fetchBootstrapData(): Promise<void> {
     },
   };
 
+  // GitHub Pages: paint from baked seed immediately — don't wait on a dead proxy.
+  if (isStaticWebMirror()) {
+    const bakedTiers = await hydrateFromBakedTiers();
+    const hasBaked = bakedTiers.fast.source !== 'none' || bakedTiers.slow.source !== 'none';
+    if (hasBaked) {
+      lastHydrationState = {
+        source: 'cached',
+        tiers: bakedTiers,
+      };
+    }
+    if (!shouldUseLiveApiFetch()) return;
+  }
+
   const fastCtrl = new AbortController();
   const slowCtrl = new AbortController();
   const desktop = isDesktopRuntime();
@@ -270,8 +308,11 @@ export async function fetchBootstrapData(): Promise<void> {
   // - 3.0 s is a conservative bump to avoid that cascade. Further tuning should be driven by RUM / Sentry
   //   data once available; do not move this without evidence.
   // - Desktop budgets (5 s / 8 s) are unchanged — different network and dependency-loading constraints.
-  const fastTimeout = setTimeout(() => fastCtrl.abort(), desktop ? 5_000 : 1_200);
-  const slowTimeout = setTimeout(() => slowCtrl.abort(), desktop ? 8_000 : 3_000);
+  const staticMirror = isStaticWebMirror();
+  const fastBudgetMs = desktop ? 5_000 : (staticMirror ? 2_000 : 1_200);
+  const slowBudgetMs = desktop ? 8_000 : (staticMirror ? 4_000 : 3_000);
+  const fastTimeout = setTimeout(() => fastCtrl.abort(), fastBudgetMs);
+  const slowTimeout = setTimeout(() => slowCtrl.abort(), slowBudgetMs);
 
   try {
     const [slowState, fastState] = await Promise.all([
@@ -301,23 +342,19 @@ export function startLiveSeedPolling(onUpdate?: () => void): void {
 
   const refresh = async () => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-    if (hasStaticMirrorLiveApi()) {
+    if (shouldUseLiveApiFetch()) {
       await fetchBootstrapData();
       onUpdate?.();
       return;
     }
-    for (const tier of ['fast', 'slow'] as const) {
-      const baked = await loadBakedSeedTier(tier);
-      if (baked && Object.keys(baked).length > 0) {
-        populateCache(baked);
-        lastHydrationState = {
-          source: 'live',
-          tiers: {
-            ...lastHydrationState.tiers,
-            [tier]: { source: 'live', updatedAt: Date.now() },
-          },
-        };
-      }
+    clearBakedSeedTierCache();
+    const bakedTiers = await hydrateFromBakedTiers(true);
+    const hasBaked = bakedTiers.fast.source !== 'none' || bakedTiers.slow.source !== 'none';
+    if (hasBaked) {
+      lastHydrationState = {
+        source: 'cached',
+        tiers: bakedTiers,
+      };
     }
     onUpdate?.();
   };

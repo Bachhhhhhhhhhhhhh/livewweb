@@ -2,7 +2,7 @@ import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { joinSafeHtml, safeHtml, unsafeRawHtml, type SafeHtml } from '@/utils/sanitize';
 import { resolvePanelBootstrap } from '@/services/bootstrap';
-import { hasStaticMirrorLiveApi, isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
+import { isStaticWebMirror, shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { fetchChokepointStatus } from '@/services/supply-chain';
 import { attributionFooterHtml, ATTRIBUTION_FOOTER_CSS } from '@/utils/attribution-footer';
 import type { GetChokepointStatusResponse, ChokepointInfo } from '@/generated/client/worldmonitor/supply_chain/v1/service_client';
@@ -77,7 +77,7 @@ export class ChokepointStripPanel extends Panel {
         }
         return;
       }
-      if (isStaticWebMirror() && !hasStaticMirrorLiveApi()) {
+      if (isStaticWebMirror() && !shouldUseLiveApiFetch()) {
         if (!this.element?.isConnected) return;
         this.showError(t('components.chokepointStrip.errors.unavailable'), () => void this.fetchData());
         return;

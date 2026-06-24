@@ -37,9 +37,11 @@ function mergeDigestInto(
   Object.assign(target.feedStatuses, source.feedStatuses ?? {});
 }
 
-async function fetchDigestFile(file: string): Promise<ListFeedDigestResponse | null> {
+async function fetchDigestFile(file: string, bustCache = false): Promise<ListFeedDigestResponse | null> {
   try {
-    const resp = await fetch(withBase(`/live-seed/${file}`), { cache: 'no-cache' });
+    const base = withBase(`/live-seed/${file}`);
+    const url = bustCache ? `${base}?t=${Date.now()}` : base;
+    const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) return null;
     const data = (await resp.json()) as ListFeedDigestResponse;
     return data.categories && Object.keys(data.categories).length > 0 ? data : null;
@@ -49,13 +51,17 @@ async function fetchDigestFile(file: string): Promise<ListFeedDigestResponse | n
 }
 
 /** Load a single variant digest (1–2 fetches vs 14 for full merge). */
-async function loadVariantBakedDigest(variant: string, lang: string): Promise<ListFeedDigestResponse | null> {
+async function loadVariantBakedDigest(
+  variant: string,
+  lang: string,
+  bustCache = false,
+): Promise<ListFeedDigestResponse | null> {
   const merged: ListFeedDigestResponse = { categories: {}, feedStatuses: {}, generatedAt: '' };
   const langs = lang === 'en' ? ['en'] : [lang, 'en'];
   let loadedAny = false;
 
   for (const digestLang of langs) {
-    const data = await fetchDigestFile(`feed-digest-${variant}-${digestLang}.json`);
+    const data = await fetchDigestFile(`feed-digest-${variant}-${digestLang}.json`, bustCache);
     if (!data?.categories) continue;
     loadedAny = true;
     mergeDigestInto(merged, data);
@@ -65,8 +71,12 @@ async function loadVariantBakedDigest(variant: string, lang: string): Promise<Li
 }
 
 /** Merge all variant digests so custom panels (e.g. startups) hydrate on GitHub Pages. */
-async function loadMergedBakedDigest(variant: string, lang: string): Promise<ListFeedDigestResponse | null> {
-  const variantDigest = await loadVariantBakedDigest(variant, lang);
+async function loadMergedBakedDigest(
+  variant: string,
+  lang: string,
+  bustCache = false,
+): Promise<ListFeedDigestResponse | null> {
+  const variantDigest = await loadVariantBakedDigest(variant, lang, bustCache);
   const variantCategoryCount = Object.keys(variantDigest?.categories ?? {}).length;
   if (variantDigest && variantCategoryCount >= MIN_CATEGORIES_BEFORE_MERGE) {
     return variantDigest;
@@ -79,7 +89,7 @@ async function loadMergedBakedDigest(variant: string, lang: string): Promise<Lis
   for (const digestLang of langs) {
     for (const digestVariant of DIGEST_VARIANTS) {
       if (digestVariant === variant && variantDigest) continue;
-      const data = await fetchDigestFile(`feed-digest-${digestVariant}-${digestLang}.json`);
+      const data = await fetchDigestFile(`feed-digest-${digestVariant}-${digestLang}.json`, bustCache);
       if (!data?.categories) continue;
       loadedAny = true;
       mergeDigestInto(merged, data);
@@ -108,14 +118,17 @@ async function fetchLiveFeedDigest(variant: string, lang: string): Promise<ListF
 export async function loadBakedFeedDigest(
   variant: string,
   lang: string,
+  options?: { bustCache?: boolean },
 ): Promise<ListFeedDigestResponse | null> {
   if (!isStaticWebMirror()) return null;
 
   const key = cacheKey(variant, lang);
-  const hit = cache.get(key);
-  if (hit) return hit;
+  if (!options?.bustCache) {
+    const hit = cache.get(key);
+    if (hit) return hit;
+  }
 
-  const merged = await loadMergedBakedDigest(variant, lang);
+  const merged = await loadMergedBakedDigest(variant, lang, options?.bustCache);
   if (merged) {
     cache.set(key, merged);
     return merged;
@@ -137,7 +150,7 @@ export function startLiveDigestPolling(
     cache.delete(cacheKey(variant, lang));
     let digest = await fetchLiveFeedDigest(variant, lang);
     if (!digest) {
-      digest = await loadBakedFeedDigest(variant, lang);
+      digest = await loadBakedFeedDigest(variant, lang, { bustCache: true });
     }
     if (digest) onUpdate?.(digest);
   };

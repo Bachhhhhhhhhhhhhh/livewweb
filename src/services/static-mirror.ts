@@ -1,4 +1,5 @@
 import { APP_BASE_PATH } from '@/utils/app-base';
+import { isLiveApiReachable } from '@/services/live-api-probe';
 
 /** True for GitHub Pages and other subpath static mirrors. */
 export function isStaticWebMirror(): boolean {
@@ -26,7 +27,8 @@ export function hasStaticMirrorLiveApi(): boolean {
   return isStaticWebMirror() && (import.meta.env.VITE_WS_API_URL?.length ?? 0) > 0;
 }
 
-/** Live RPC/API refresh (not only baked seed) — enabled on web and GitHub Pages with proxy. */
+/** Live RPC/API refresh — GitHub Pages only when the Worker proxy actually responds. */
 export function shouldUseLiveApiFetch(): boolean {
-  return !isStaticWebMirror() || hasStaticMirrorLiveApi();
+  if (!isStaticWebMirror()) return true;
+  return hasStaticMirrorLiveApi() && isLiveApiReachable();
 }
