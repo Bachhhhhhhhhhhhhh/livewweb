@@ -1,3 +1,5 @@
+import { loadStaticPanelSeed } from '@/services/static-panel-seed';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { toApiUrl } from '@/services/runtime';
 
 export interface HormuzSeries {
@@ -23,14 +25,19 @@ export interface HormuzTrackerData {
 }
 
 export async function fetchHormuzTracker(): Promise<HormuzTrackerData | null> {
+  const seeded = await loadStaticPanelSeed<HormuzTrackerData>('hormuz-tracker');
+  if (seeded?.attribution) return seeded;
+
+  if (!shouldUseLiveApiFetch()) return null;
+
   try {
     const resp = await fetch(toApiUrl('/api/supply-chain/hormuz-tracker'), {
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(8_000),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) return seeded?.attribution ? seeded : null;
     const raw = (await resp.json()) as HormuzTrackerData;
-    return raw.attribution ? raw : null;
+    return raw.attribution ? raw : (seeded?.attribution ? seeded : null);
   } catch {
-    return null;
+    return seeded?.attribution ? seeded : null;
   }
 }

@@ -19,6 +19,11 @@ const DIGEST_VARIANTS = (process.env.LIVE_SEED_DIGEST_VARIANTS || 'full,tech,fin
 const DIGEST_LANGS = (process.env.LIVE_SEED_DIGEST_LANGS || 'en,vi').split(',');
 
 /** Default Live News handles baked for GitHub Pages (no live API on static host). */
+const FRED_SERIES_IDS = [
+  'VIXCLS', 'BAMLH0A0HYM2', 'ICSA', 'MORTGAGE30US', 'FEDFUNDS', 'T10Y2Y',
+  'M2SL', 'UNRATE', 'CPIAUCSL', 'DGS10', 'WALCL',
+];
+
 const LIVE_CHANNEL_HANDLES = (process.env.LIVE_SEED_CHANNEL_HANDLES || [
   '@markets', '@SkyNews', '@euronews', '@DWNews', '@CNBC', '@CNN', '@FRANCE24',
   '@AlArabiya', '@AlJazeeraEnglish', '@YahooFinance', '@NASA', '@FoxNews', '@BBCNews',
@@ -75,6 +80,84 @@ async function fetchFeedDigest(cookie, variant, lang) {
   });
   if (!res.ok) throw new Error(`digest/${variant}/${lang} HTTP ${res.status}`);
   return res.json();
+}
+
+async function fetchUpstream(cookie, path, options = {}) {
+  const { method = 'GET', body } = options;
+  const res = await fetch(`${UPSTREAM}${path}`, {
+    method,
+    headers: {
+      'Origin': ORIGIN,
+      'User-Agent': UA,
+      'Cookie': cookie,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  if (!res.ok) throw new Error(`${path} HTTP ${res.status}`);
+  return res.json();
+}
+
+function calendarRange(daysAhead) {
+  const today = new Date();
+  const future = new Date(today);
+  future.setDate(future.getDate() + daysAhead);
+  const fromDate = today.toISOString().slice(0, 10);
+  const toDate = future.toISOString().slice(0, 10);
+  return { fromDate, toDate };
+}
+
+async function fetchPanelSeeds(cookie) {
+  const panelsDir = path.join(OUT_DIR, 'panels');
+  await mkdir(panelsDir, { recursive: true });
+
+  const { fromDate: econFrom, toDate: econTo } = calendarRange(30);
+  const { fromDate: earnFrom, toDate: earnTo } = calendarRange(14);
+
+  const seeds = [
+    { slug: 'hormuz-tracker', fetch: () => fetchUpstream(cookie, '/api/supply-chain/hormuz-tracker') },
+    { slug: 'gold-intelligence', fetch: () => fetchUpstream(cookie, '/api/market/v1/get-gold-intelligence') },
+    { slug: 'oil-inventories', fetch: () => fetchUpstream(cookie, '/api/economic/v1/get-oil-inventories') },
+    {
+      slug: 'cot-positioning',
+      fetch: () => fetchUpstream(cookie, '/api/market/v1/get-cot-positioning'),
+      bootstrapKey: 'cotPositioning',
+    },
+    {
+      slug: 'economic-calendar',
+      fetch: () => fetchUpstream(cookie, `/api/economic/v1/get-economic-calendar?fromDate=${econFrom}&toDate=${econTo}`),
+      bootstrapKey: 'econCalendar',
+    },
+    {
+      slug: 'earnings-calendar',
+      fetch: () => fetchUpstream(cookie, `/api/market/v1/list-earnings-calendar?fromDate=${earnFrom}&toDate=${earnTo}`),
+      bootstrapKey: 'earningsCalendar',
+    },
+    {
+      slug: 'fred-batch',
+      fetch: () => fetchUpstream(cookie, '/api/economic/v1/get-fred-series-batch', {
+        method: 'POST',
+        body: { seriesIds: FRED_SERIES_IDS, limit: 120 },
+      }),
+    },
+  ];
+
+  const stats = [];
+  for (const seed of seeds) {
+    try {
+      const data = await seed.fetch();
+      await writeFile(path.join(panelsDir, `${seed.slug}.json`), JSON.stringify(data));
+      if (seed.bootstrapKey) {
+        await writeFile(path.join(panelsDir, `${seed.bootstrapKey}.json`), JSON.stringify(data));
+      }
+      stats.push({ slug: seed.slug, ok: true });
+      console.log(`[live-seed] panel ${seed.slug}: ok`);
+    } catch (err) {
+      stats.push({ slug: seed.slug, ok: false, error: err.message });
+      console.warn(`[live-seed] panel ${seed.slug} skipped: ${err.message}`);
+    }
+  }
+  return stats;
 }
 
 async function fetchYoutubeLive(cookie, handle) {
@@ -136,6 +219,9 @@ async function main() {
     }
   }
 
+  console.log('[live-seed] Fetching panel snapshots...');
+  const panelStats = await fetchPanelSeeds(cookie);
+
   const manifest = {
     fetchedAt: new Date().toISOString(),
     upstream: UPSTREAM,
@@ -143,6 +229,7 @@ async function main() {
     slow: { keys: Object.keys(slow.data ?? {}).length, missing: slow.missing ?? [] },
     digests: digestStats,
     liveChannels: Object.keys(liveChannels.channels).length,
+    panels: panelStats,
   };
 
   await mkdir(OUT_DIR, { recursive: true });
@@ -154,7 +241,8 @@ async function main() {
     ...digestWrites,
   ]);
 
-  console.log(`[live-seed] Wrote ${manifest.fast.keys} fast + ${manifest.slow.keys} slow keys, ${digestStats.length} digests, ${manifest.liveChannels} live channels → public/live-seed/`);
+  const panelOk = panelStats.filter((p) => p.ok).length;
+  console.log(`[live-seed] Wrote ${manifest.fast.keys} fast + ${manifest.slow.keys} slow keys, ${digestStats.length} digests, ${panelOk}/${panelStats.length} panels, ${manifest.liveChannels} live channels → public/live-seed/`);
 }
 
 async function copyFallbackSeed() {

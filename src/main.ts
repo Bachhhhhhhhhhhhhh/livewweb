@@ -5,7 +5,7 @@ import { enqueueSentryCall, installPreInitErrorQueue, scheduleSentryInit } from 
 import { inject } from '@vercel/analytics';
 import { App } from './App';
 import { installUtmInterceptor } from './utils/utm';
-import { isStaticWebMirror } from '@/services/static-mirror';
+import { isStaticWebMirror, shouldRegisterServiceWorker } from '@/services/static-mirror';
 
 // perf G — defer @sentry/browser off the critical path (#3994).
 // The eager `Sentry.init({...})` previously ran here cost ~1.96 s of pre-LCP
@@ -261,7 +261,7 @@ import { clearChunkReloadGuard, installChunkReloadGuard } from '@/bootstrap/chun
 import { installStaleBundleCheck } from '@/bootstrap/stale-bundle-check';
 import { installSwUpdateHandler } from '@/bootstrap/sw-update';
 import { withBase } from '@/utils/app-base';
-import { shouldRegisterServiceWorker } from '@/services/static-mirror';
+import { probeLiveApiReachable } from '@/services/live-api-probe';
 
 // Auto-reload on stale chunk 404s after deployment (Vite fires this for modulepreload failures).
 const chunkReloadStorageKey = installChunkReloadGuard(__APP_VERSION__);
@@ -280,6 +280,9 @@ initMetaTags();
 installRuntimeFetchPatch();
 // In web production, route RPC calls through api.worldmonitor.app (Cloudflare edge).
 installWebApiRedirect();
+if (isStaticWebMirror()) {
+  void probeLiveApiReachable();
+}
 // Force-reload tabs running a stale bundle (catches the class of bug where
 // users keep a tab open across a wire-shape change). Skips when build-hash
 // is the 'dev' marker.

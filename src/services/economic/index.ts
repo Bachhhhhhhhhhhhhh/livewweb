@@ -50,6 +50,8 @@ import { getCSSColor } from '@/utils';
 import { isFeatureAvailable } from '../runtime-config';
 import { dataFreshness } from '../data-freshness';
 import { getHydratedData } from '@/services/bootstrap';
+import { loadStaticPanelSeed } from '@/services/static-panel-seed';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { toApiUrl } from '@/services/runtime';
 import { hasPremiumAccess } from '@/services/panel-gating';
 
@@ -160,35 +162,10 @@ function roundValue(value: number, precision: number): number {
   return Number(value.toFixed(precision));
 }
 
-export async function fetchFredData(): Promise<FredSeries[]> {
-  if (!isFeatureAvailable('economicFred')) return [];
-
-  const resp = await fredBatchBreaker.execute(async () => {
-    try {
-      return await client.getFredSeriesBatch(
-        { seriesIds: FRED_SERIES.map((c) => c.id), limit: 120 },
-        { signal: AbortSignal.timeout(30_000) },
-      );
-    } catch (err: unknown) {
-      // 404 deploy-skew fallback: batch endpoint not yet deployed, use per-item calls
-      if (err instanceof ApiError && err.statusCode === 404) {
-        const items = await Promise.all(FRED_SERIES.map((c) =>
-          client.getFredSeries({ seriesId: c.id, limit: 120 }, { signal: AbortSignal.timeout(20_000) })
-            .catch(() => ({ series: undefined }) as GetFredSeriesResponse),
-        ));
-        const fallbackResults: Record<string, NonNullable<GetFredSeriesResponse['series']>> = {};
-        for (const item of items) {
-          if (item.series) fallbackResults[item.series.seriesId] = item.series;
-        }
-        return { results: fallbackResults, fetched: Object.keys(fallbackResults).length, requested: FRED_SERIES.length };
-      }
-      throw err;
-    }
-  }, emptyFredBatchFallback, { shouldCache: (r) => r.fetched > 0 });
-
+function fredBatchToSeries(batch: GetFredSeriesBatchResponse): FredSeries[] {
   const out: FredSeries[] = [];
   for (const config of FRED_SERIES) {
-    const series = resp.results[config.id];
+    const series = batch.results[config.id];
     if (!series) continue;
     const obs = series.observations;
     if (!obs || obs.length === 0) continue;
@@ -225,6 +202,43 @@ export async function fetchFredData(): Promise<FredSeries[]> {
     }
   }
   return out;
+}
+
+export async function fetchFredData(): Promise<FredSeries[]> {
+  if (!isFeatureAvailable('economicFred')) return [];
+
+  const seeded = await loadStaticPanelSeed<GetFredSeriesBatchResponse>('fred-batch');
+  if (seeded && seeded.fetched > 0) {
+    const fromSeed = fredBatchToSeries(seeded);
+    if (fromSeed.length > 0) return fromSeed;
+  }
+
+  if (!shouldUseLiveApiFetch()) return [];
+
+  const resp = await fredBatchBreaker.execute(async () => {
+    try {
+      return await client.getFredSeriesBatch(
+        { seriesIds: FRED_SERIES.map((c) => c.id), limit: 120 },
+        { signal: AbortSignal.timeout(30_000) },
+      );
+    } catch (err: unknown) {
+      // 404 deploy-skew fallback: batch endpoint not yet deployed, use per-item calls
+      if (err instanceof ApiError && err.statusCode === 404) {
+        const items = await Promise.all(FRED_SERIES.map((c) =>
+          client.getFredSeries({ seriesId: c.id, limit: 120 }, { signal: AbortSignal.timeout(20_000) })
+            .catch(() => ({ series: undefined }) as GetFredSeriesResponse),
+        ));
+        const fallbackResults: Record<string, NonNullable<GetFredSeriesResponse['series']>> = {};
+        for (const item of items) {
+          if (item.series) fallbackResults[item.series.seriesId] = item.series;
+        }
+        return { results: fallbackResults, fetched: Object.keys(fallbackResults).length, requested: FRED_SERIES.length };
+      }
+      throw err;
+    }
+  }, emptyFredBatchFallback, { shouldCache: (r) => r.fetched > 0 });
+
+  return fredBatchToSeries(resp);
 }
 
 export function getFredStatus(): string {
@@ -449,6 +463,7 @@ export async function fetchCrudeInventoriesRpc(): Promise<GetCrudeInventoriesRes
   if (!isFeatureAvailable('energyEia')) return emptyCrudeFallback;
   const hydrated = getHydratedData('crudeInventories') as GetCrudeInventoriesResponse | undefined;
   if (hydrated?.weeks?.length) return hydrated;
+  if (!shouldUseLiveApiFetch()) return emptyCrudeFallback;
   try {
     return await crudeBreaker.execute(async () => {
       return client.getCrudeInventories({}, { signal: AbortSignal.timeout(20_000) });
@@ -468,6 +483,7 @@ export async function fetchNatGasStorageRpc(): Promise<GetNatGasStorageResponse>
   if (!isFeatureAvailable('energyEia')) return emptyNatGasFallback;
   const hydrated = getHydratedData('natGasStorage') as GetNatGasStorageResponse | undefined;
   if (hydrated?.weeks?.length) return hydrated;
+  if (!shouldUseLiveApiFetch()) return emptyNatGasFallback;
   try {
     return await natGasBreaker.execute(async () => {
       return client.getNatGasStorage({}, { signal: AbortSignal.timeout(20_000) });
@@ -840,6 +856,7 @@ export type { GetEuGasStorageResponse, EuGasStorageHistoryEntry };
 export async function getEuGasStorageData(): Promise<GetEuGasStorageResponse> {
   const hydrated = getHydratedData('euGasStorage') as GetEuGasStorageResponse | undefined;
   if (hydrated && !hydrated.unavailable && hydrated.fillPct > 0) return hydrated;
+  if (!shouldUseLiveApiFetch()) return emptyEuGasFallback;
 
   try {
     return await euGasBreaker.execute(
@@ -882,6 +899,7 @@ export type { GetOilStocksAnalysisResponse, OilStocksAnalysisMember, OilStocksRe
 export async function getOilStocksAnalysisData(): Promise<GetOilStocksAnalysisResponse> {
   const hydrated = getHydratedData('oilStocksAnalysis') as GetOilStocksAnalysisResponse | undefined;
   if (hydrated && !hydrated.unavailable && hydrated.ieaMembers.length > 0) return hydrated;
+  if (!shouldUseLiveApiFetch()) return emptyOilStocksAnalysisFallback;
 
   try {
     return await oilStocksAnalysisBreaker.execute(

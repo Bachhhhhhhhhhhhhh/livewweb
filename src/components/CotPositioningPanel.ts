@@ -1,5 +1,6 @@
 import type { MarketServiceClient } from '@/generated/client/worldmonitor/market/v1/service_client';
 import { fetchBootstrapKeys } from '@/services/bootstrap';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
@@ -84,8 +85,14 @@ export class CotPositioningPanel extends Panel {
         this.render(seeded.instruments, seeded.reportDate ?? '');
       }
 
+      if (!shouldUseLiveApiFetch()) {
+        if (this._hasData) return true;
+        this.showError('COT data unavailable', () => void this.fetchData());
+        return false;
+      }
+
       const client = await getMarketClient();
-      const resp = await client.getCotPositioning({});
+      const resp = await client.getCotPositioning({}, { signal: AbortSignal.timeout(8_000) });
       if (resp.unavailable || !resp.instruments || resp.instruments.length === 0) {
         if (!this._hasData) this.showError('COT data unavailable', () => void this.fetchData());
         return false;

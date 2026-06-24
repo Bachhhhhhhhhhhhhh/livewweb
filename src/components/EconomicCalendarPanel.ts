@@ -1,5 +1,6 @@
 import type { EconomicServiceClient } from '@/generated/client/worldmonitor/economic/v1/service_client';
 import { fetchBootstrapKeys } from '@/services/bootstrap';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
@@ -114,11 +115,17 @@ export class EconomicCalendarPanel extends Panel {
         this._render();
       }
 
+      if (!shouldUseLiveApiFetch()) {
+        if (this._hasData) return true;
+        this.showError('Economic calendar data unavailable.', () => void this.fetchData());
+        return false;
+      }
+
       const client = await getEconomicClient();
       const today = new Date();
       const fromDate = today.toISOString().slice(0, 10);
       const toDate = new Date(today.getTime() + 30 * 86400_000).toISOString().slice(0, 10);
-      const resp = await client.getEconomicCalendar({ fromDate, toDate });
+      const resp = await client.getEconomicCalendar({ fromDate, toDate }, { signal: AbortSignal.timeout(8_000) });
 
       if (resp.unavailable || !resp.events || resp.events.length === 0) {
         if (!this._hasData) this.showError('Economic calendar data unavailable.', () => void this.fetchData());

@@ -1,7 +1,11 @@
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
-import { toApiUrl } from '@/services/runtime';
+import {
+  resolveOilInventoriesData,
+  type OilInventoriesData,
+  type OilInventoriesIeaMember,
+} from '@/services/oil-inventories-data';
 
 // SVG chart constants
 const SVG_W = 400;
@@ -16,22 +20,7 @@ const CH = CHART_H - MT - MB;
 
 interface CrudeWeek { period: string; stocksMb: number; weeklyChangeMb?: number }
 interface SprWeek { period: string; stocksMb: number }
-interface SprData { latestStocksMb: number; changeWow: number; weeks: SprWeek[] }
-interface NatGasWeek { period: string; storBcf: number; weeklyChangeBcf?: number }
-interface EuGasDay { date: string; fillPct: number }
-interface EuGasData { fillPct: number; fillPctChange1d: number; trend: string; history: EuGasDay[] }
-interface IeaMember { iso2: string; daysOfCover?: number; netExporter: boolean; belowObligation: boolean }
-interface RegionStats { avgDays?: number; minDays?: number; countBelowObligation?: number }
-interface IeaData { dataMonth: string; members: IeaMember[]; europe?: RegionStats; asiaPacific?: RegionStats; northAmerica?: RegionStats }
-interface RefineryData { inputsMbpd: number; period: string }
-interface OilInventoriesData {
-  crudeWeeks: CrudeWeek[];
-  spr?: SprData;
-  natGasWeeks: NatGasWeek[];
-  euGas?: EuGasData;
-  ieaStocks?: IeaData;
-  refinery?: RefineryData;
-}
+type PanelOilData = OilInventoriesData;
 
 interface MergedWeek { period: string; crudeMb: number | null; sprMb: number | null }
 
@@ -134,7 +123,7 @@ function buildLineChart(data: Array<{ x: string; y: number }>, color: string, un
   return `<svg viewBox="0 0 ${SVG_W} ${h}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">${yAxis}${xAxis}<path d="${area}" fill="${color}" opacity="0.12"/><polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.9"/></svg>`;
 }
 
-function buildIeaBarChart(members: IeaMember[]): string {
+function buildIeaBarChart(members: OilInventoriesIeaMember[]): string {
   const sorted = [...members]
     .filter(m => m.daysOfCover != null || m.netExporter)
     .sort((a, b) => {
@@ -192,9 +181,11 @@ export class OilInventoriesPanel extends Panel {
 
   public async fetchData(): Promise<void> {
     try {
-      const resp = await fetch(toApiUrl('/api/economic/v1/get-oil-inventories'));
-      if (!resp.ok) { this.showError('Oil inventory data unavailable', () => void this.fetchData(), 300); return; }
-      const data = (await resp.json()) as OilInventoriesData;
+      const data = await resolveOilInventoriesData();
+      if (!data) {
+        this.showError('Oil inventory data unavailable', () => void this.fetchData(), 300);
+        return;
+      }
       if (!this.element?.isConnected) return;
       this.render(data);
     } catch {
@@ -203,7 +194,7 @@ export class OilInventoriesPanel extends Panel {
     }
   }
 
-  private render(d: OilInventoriesData): void {
+  private render(d: PanelOilData): void {
     const parts: string[] = [];
 
     // Section 1: Crude + SPR stacked

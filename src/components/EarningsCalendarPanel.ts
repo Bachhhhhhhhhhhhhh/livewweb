@@ -1,4 +1,6 @@
 import type { MarketServiceClient } from '@/generated/client/worldmonitor/market/v1/service_client';
+import { fetchBootstrapKeys } from '@/services/bootstrap';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { Panel } from './Panel';
 import { t, getLocale } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
@@ -140,13 +142,25 @@ export class EarningsCalendarPanel extends Panel {
 
   private async refreshFromRpc(): Promise<boolean> {
     try {
+      const boot = await fetchBootstrapKeys('earningsCalendar', { timeoutMs: 6_000 });
+      const seeded = boot.data?.earningsCalendar as { earnings?: EarningsEntry[]; unavailable?: boolean } | undefined;
+      if (seeded?.earnings?.length) {
+        this.render(seeded.earnings);
+      }
+
+      if (!shouldUseLiveApiFetch()) {
+        if (this._hasData) return true;
+        this.showError(t('components.earningsCalendar.errors.noData'), () => void this.fetchData());
+        return false;
+      }
+
       const client = await getMarketClient();
       const today = new Date();
       const future = new Date();
       future.setDate(future.getDate() + 14);
       const fromDate = today.toISOString().slice(0, 10);
       const toDate = future.toISOString().slice(0, 10);
-      const resp = await client.listEarningsCalendar({ fromDate, toDate });
+      const resp = await client.listEarningsCalendar({ fromDate, toDate }, { signal: AbortSignal.timeout(8_000) });
 
       if (resp.unavailable || !resp.earnings?.length) {
         if (!this._hasData) this.showError(t('components.earningsCalendar.errors.noData'), () => void this.fetchData());

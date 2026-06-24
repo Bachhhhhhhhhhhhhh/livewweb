@@ -1,6 +1,8 @@
 import { Panel } from './Panel';
 import { t } from '@/services/i18n';
 import { escapeHtml, unsafeRawHtml } from '@/utils/sanitize';
+import { loadStaticPanelSeed } from '@/services/static-panel-seed';
+import { shouldUseLiveApiFetch } from '@/services/static-mirror';
 import { toApiUrl } from '@/services/runtime';
 import { miniSparkline } from '@/utils/sparkline';
 
@@ -156,8 +158,20 @@ export class GoldIntelligencePanel extends Panel {
   public async fetchData(): Promise<boolean> {
     this.showLoading();
     try {
+      const seeded = await loadStaticPanelSeed<GoldIntelligenceData>('gold-intelligence');
+      if (seeded && !seeded.unavailable && seeded.goldPrice > 0) {
+        this._hasData = true;
+        this.render(seeded);
+      }
+
+      if (!shouldUseLiveApiFetch()) {
+        if (this._hasData) return true;
+        this.showError('Gold data unavailable', () => void this.fetchData());
+        return false;
+      }
+
       const url = toApiUrl('/api/market/v1/get-gold-intelligence');
-      const resp = await fetch(url);
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8_000) });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data: GoldIntelligenceData = await resp.json();
 
@@ -173,7 +187,8 @@ export class GoldIntelligencePanel extends Panel {
     } catch (e) {
       if (this.isAbortError(e)) return false;
       if (!this.element?.isConnected) return false;
-      if (!this._hasData) this.showError(e instanceof Error ? e.message : 'Failed to load', () => void this.fetchData());
+      if (this._hasData) return true;
+      this.showError(e instanceof Error ? e.message : 'Failed to load', () => void this.fetchData());
       return false;
     }
   }

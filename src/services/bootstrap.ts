@@ -2,6 +2,7 @@ import { getPersistentCache, setPersistentCache } from '@/services/persistent-ca
 import { isDesktopRuntime, toApiUrl } from '@/services/runtime';
 import { getForkRefreshIntervalMs } from '@/config/fork-refresh';
 import { shouldUseLiveApiFetch, isStaticWebMirror } from '@/services/static-mirror';
+import { BOOTSTRAP_PANEL_SEED_SLUGS, loadStaticPanelSeed } from '@/services/static-panel-seed';
 import { withBase } from '@/utils/app-base';
 
 const hydrationCache = new Map<string, unknown>();
@@ -96,6 +97,14 @@ export async function readBootstrapKey(key: string): Promise<unknown | undefined
     if (baked && baked[key] !== undefined && baked[key] !== null) {
       hydrationCache.set(key, baked[key]);
       return baked[key];
+    }
+  }
+  const panelSlug = BOOTSTRAP_PANEL_SEED_SLUGS[key];
+  if (panelSlug) {
+    const seeded = await loadStaticPanelSeed(panelSlug);
+    if (seeded !== undefined) {
+      hydrationCache.set(key, seeded);
+      return seeded;
     }
   }
   return undefined;
